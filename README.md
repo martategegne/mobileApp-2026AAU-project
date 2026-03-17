@@ -36,6 +36,6 @@ A mobile application that allows students to share and access academic resources
 | 3 | Mufarihat Tadesse | UGR/9735/16 | Project Developer |
 | 4 | [Name Here] | [ID Here] | Project Developer |
 | 5 | [Name Here] | [ID Here] | Project Developer |
-| Name | ID |
+
 |------|----|
 | ...  | ... |
