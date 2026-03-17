@@ -37,5 +37,4 @@ A mobile application that allows students to share and access academic resources
 | 4 | [Name Here] | [ID Here] | Project Developer |
 | 5 | [Name Here] | [ID Here] | Project Developer |
 
-|------|----|
-| ...  | ... |
+
