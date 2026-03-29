@@ -2,7 +2,7 @@
 # Smart Study Resource Sharing Platform
 
 ## Description
-A mobile application that enables students to share, access, and manage academic resources such as lecture notes, past exams, and study materials.
+A mobile application that enables students to share, access, download and manage academic resources such as lecture notes, past exams, and study materials.
 
 The system promotes collaboration, accessibility, and efficient learning within a university environment.
 
@@ -124,22 +124,16 @@ PostgreSQL Database
   .Scalable architecture (DDD)
   .Reliable data synchronization
   .User-friendly UI
--this of our project design is ........
-  .No e-commerce features
-  .No chat system
-  .No social media features
-  .No Firebase / Firestore
-  .No cloud hosting (runs locally)
-  .No payment integration
 
 ## Team Members
 
-| No. | Name | Student ID | Role |
-| :--- | :--- | :--- | :--- |
-| 1 | Marta Tegegne | UGR/4457/16 | Project Developer |
-| 2 | Ebise Tekle | UGR/9482/16 | Project Developer |
-| 3 | Mufarihat Tadesse | UGR/9735/16 | Project Developer |
-| 4 | Anatoli Chala| UGR/4369/16| Project Developer |
-| 5 | Asanti Oluma | UGR/8165/16 | Project Developer |
+
+|Name | Student ID | Role |
+| :--- | :--- | :--- |
+| Marta Tegegne | UGR/4457/16 | Project Developer |
+| Ebise Tekle | UGR/9482/16 | Project Developer |
+| Mufarihat Tadesse | UGR/9735/16 | Project Developer |
+| Anatoli Chala| UGR/4369/16| Project Developer |
+| Asanti Oluma | UGR/8165/16 | Project Developer |
 
 
