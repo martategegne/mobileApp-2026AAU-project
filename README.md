@@ -139,7 +139,7 @@ PostgreSQL Database
 | 1 | Marta Tegegne | UGR/4457/16 | Project Developer |
 | 2 | Ebise Tekle | UGR/9482/16 | Project Developer |
 | 3 | Mufarihat Tadesse | UGR/9735/16 | Project Developer |
-| 4 | [Name Here] | [ID Here] | Project Developer |
-| 5 | [Name Here] | [ID Here] | Project Developer |
+| 4 | Anatoli Chala| UGR/4369/16| Project Developer |
+| 5 | Asanti Oluma | UGR/8165/16 | Project Developer |
 
 
