@@ -6,8 +6,8 @@ The Smart Study Resource Sharing Platform is a mobile application that allows st
 
 ## Team Members
 
-|Name | Student ID | Role |
-| :--- | :--- | :--- |
+|Name | Student ID |
+| :--- | :--- | 
 | Marta Tegegne | UGR/4457/16 | 
 | Ebise Tekle | UGR/9482/16 | 
 | Mufarihat Tadesse | UGR/9735/16 | 
