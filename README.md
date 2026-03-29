@@ -1,7 +1,7 @@
 # mobileApp-2026AAU-project
 # Smart Study Resource Sharing Platform
 
-#Project Description
+# Project Description
 The Smart Study Resource Sharing Platform is a mobile application that allows students to upload, manage, and request academic study resources such as lecture notes, past exams, and study materials. The system uses a locally running backend and database to support authentication, authorization, and resource sharing without relying on any cloud services.
 
 ## Team Members
