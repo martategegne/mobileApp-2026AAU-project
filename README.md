@@ -41,3 +41,19 @@ The Smart Study Resource Sharing Platform is a mobile application that allows st
 - Update resource requests
 - Delete resource requests
 - Mark resource requests as fulfilled
+
+### Rating and Review System (business logic 3)
+Allow users to provide feedback on shared study resources by rating and reviewing them.
+Features:
+- Rate study resources using a 1–5 star rating system
+- Add written reviews/comments for each resource
+- View ratings and reviews from other users
+- Display average rating for each resource
+- Update or delete user’s own review
+### Bookmark / Save Resources (business logic 4)
+Enable users to save study resources for quick access later.
+Features:
+- Save (bookmark) study resources
+- View list of saved/bookmarked resources
+- Remove resources from bookmarks
+- Quick access to bookmarked materials from user profile
