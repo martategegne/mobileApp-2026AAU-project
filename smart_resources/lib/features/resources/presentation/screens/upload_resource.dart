@@ -1,137 +1,230 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../widgets/resource_card.dart';
+import '../../../../core/widgets/custom_button.dart';
+import '../../../../core/widgets/custom_text_field.dart';
 
-class ResourceList extends StatelessWidget {
+class UploadResource extends StatefulWidget {
   final bool isAdmin;
 
-  const ResourceList({super.key, required this.isAdmin});
+  const UploadResource({
+    super.key,
+    required this.isAdmin,
+  });
+
+  @override
+  State<UploadResource> createState() => _UploadResourceState();
+}
+
+class _UploadResourceState extends State<UploadResource> {
+  String _selectedFileType = 'PDF';
+  String _selectedCategory = 'Lecture Notes';
+
+  final List<String> _fileTypes = ['PDF', 'DOCX', 'PPTX', 'ZIP'];
+  final List<String> _categories = [
+    'Lecture Notes',
+    'Study Guide',
+    'Past Exam',
+    'Assignment'
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final prefix = isAdmin ? '/admin' : '/student';
-
-    final resources = [
-      {
-        'id': '1',
-        'title': 'Advanced Calculus Notes',
-        'description':
-            'Complete guide to limits, derivatives, and integration techniques with solved problems.',
-        'courseCode': 'MATH201',
-        'rating': 5.0,
-        'reviewCount': 1,
-        'uses': 89,
-        'fileType': 'PDF',
-      },
-      {
-        'id': '2',
-        'title': 'Data Structures Masterclass',
-        'description':
-            'Arrays, linked lists, trees, graphs, and algorithms visual explanations.',
-        'courseCode': 'CS301',
-        'rating': 5.0,
-        'reviewCount': 1,
-        'uses': 156,
-        'fileType': 'PDF',
-      },
-      {
-        'id': '3',
-        'title': 'Operating Systems Concepts',
-        'description':
-            'Process scheduling, memory management, file systems — university level.',
-        'courseCode': 'CS340',
-        'rating': 0.0,
-        'reviewCount': 0,
-        'uses': 42,
-        'fileType': 'PDF',
-      },
-    ];
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Resources'),
-        backgroundColor: AppColors.white,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-      ),
       body: SafeArea(
         child: Column(
           children: [
+            // App bar
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search by course code or keyword...',
-                  prefixIcon: const Icon(Icons.search,
-                      color: AppColors.mediumGrey, size: 20),
-                  filled: true,
-                  fillColor: AppColors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
-                    borderSide: const BorderSide(color: AppColors.lightGrey),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
-                    borderSide: const BorderSide(color: AppColors.lightGrey),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
-                    borderSide:
-                        const BorderSide(color: AppColors.primary, width: 1.5),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.menu_book_outlined,
-                      size: 18, color: AppColors.textPrimary),
-                  const SizedBox(width: 8),
-                  const Text('All Resources',
+                  GestureDetector(
+                    onTap: () => context.go(
+                      widget.isAdmin
+                          ? '/admin/resources'
+                          : '/student/resources',
+                    ),
+                    child: const Icon(Icons.arrow_back,
+                        color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Upload Resource',
                       style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: () => context.go('$prefix/upload'),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Upload'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      textStyle: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+                  const Icon(Icons.notifications_outlined,
+                      color: AppColors.textPrimary),
                 ],
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: resources.length,
-                itemBuilder: (context, i) {
-                  final r = resources[i];
-                  return ResourceCard(
-                    id: r['id'] as String,
-                    title: r['title'] as String,
-                    description: r['description'] as String,
-                    courseCode: r['courseCode'] as String,
-                    rating: r['rating'] as double,
-                    reviewCount: r['reviewCount'] as int,
-                    uses: r['uses'] as int,
-                    fileType: r['fileType'] as String,
-                    isAdmin: isAdmin,
-                    isBookmarked: i == 0,
-                    isStarred: i == 0,
-                  );
-                },
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // File upload area
+                    Container(
+                      width: double.infinity,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.lightGrey,
+                            style: BorderStyle.solid),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.cloud_upload_outlined,
+                              size: 36,
+                              color: AppColors.primary.withOpacity(0.7)),
+                          const SizedBox(height: 8),
+                          const Text('Tap to select file',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textPrimary)),
+                          const SizedBox(height: 4),
+                          const Text('PDF, DOCX, PPTX, or ZIP up to 50MB',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppColors.mediumGrey)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Title *',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 6),
+                    const CustomTextField(hintText: 'e.g. Midterm Study Guide'),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Course Code *',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textPrimary)),
+                              SizedBox(height: 6),
+                              CustomTextField(hintText: 'e.g. CS101'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('File Type',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textPrimary)),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  border:
+                                      Border.all(color: AppColors.lightGrey),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedFileType,
+                                    isExpanded: true,
+                                    items: _fileTypes
+                                        .map((t) => DropdownMenuItem(
+                                            value: t, child: Text(t)))
+                                        .toList(),
+                                    onChanged: (v) =>
+                                        setState(() => _selectedFileType = v!),
+                                    style: const TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.textPrimary),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Category',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        border: Border.all(color: AppColors.lightGrey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedCategory,
+                          isExpanded: true,
+                          items: _categories
+                              .map((c) =>
+                                  DropdownMenuItem(value: c, child: Text(c)))
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => _selectedCategory = v!),
+                          style: const TextStyle(
+                              fontSize: 14, color: AppColors.textPrimary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Description *',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 6),
+                    const CustomTextField(
+                      hintText: "Describe what's included in this resource...",
+                      maxLines: 4,
+                    ),
+                    const SizedBox(height: 28),
+                    CustomButton(
+                      label: 'Upload Resource',
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('File uploaded successfully!',
+                                style: TextStyle(color: AppColors.success)),
+                            backgroundColor: AppColors.white,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        context.go(
+                          widget.isAdmin
+                              ? '/admin/resources'
+                              : '/student/resources',
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
