@@ -9,7 +9,7 @@ class _AdminHeader extends StatelessWidget {
 
   const _AdminHeader({required this.title, this.onBack});
 
-  @override
+  @override // replace the parent method with its own
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
