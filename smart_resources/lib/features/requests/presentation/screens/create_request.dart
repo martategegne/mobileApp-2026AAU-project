@@ -1,21 +1,124 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/custom_button.dart';
-import '../../../../core/widgets/custom_text_field.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
+import 'package:smart_resources/core/widgets/custom_button.dart';
+import 'package:smart_resources/core/widgets/custom_text_field.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:smart_resources/features/requests/data/models/request_model.dart';
+import 'package:smart_resources/features/requests/presentation/providers/request_notifier.dart';
 
-class CreateRequest extends StatelessWidget {
+class CreateRequest extends ConsumerStatefulWidget {
   final bool isAdmin;
+  final RequestModel? requestToEdit;
 
   const CreateRequest({
     super.key,
     required this.isAdmin,
+    this.requestToEdit,
   });
 
   @override
+  ConsumerState<CreateRequest> createState() => _CreateRequestState();
+}
+
+class _CreateRequestState extends ConsumerState<CreateRequest> {
+  late TextEditingController _titleController;
+  late TextEditingController _courseCodeController;
+  late TextEditingController _descriptionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.requestToEdit?.title ?? '');
+    _courseCodeController = TextEditingController(text: widget.requestToEdit?.courseCode ?? '');
+    _descriptionController = TextEditingController(text: widget.requestToEdit?.description ?? '');
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _courseCodeController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSubmit() async {
+    final title = _titleController.text.trim();
+    final courseCode = _courseCodeController.text.trim();
+    final description = _descriptionController.text.trim();
+    final user = ref.read(authNotifierProvider).user;
+
+    if (title.isEmpty || courseCode.isEmpty || description.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    if (widget.requestToEdit != null) {
+      final updatedRequest = widget.requestToEdit!.copyWith(
+        title: title,
+        courseCode: courseCode,
+        description: description,
+      );
+      try {
+        await ref.read(requestNotifierProvider.notifier).updateRequest(updatedRequest);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Request updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.go(widget.isAdmin ? '/admin/requests' : '/student/requests');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    } else {
+      final request = RequestModel(
+        id: 'req-${DateTime.now().millisecondsSinceEpoch}',
+        title: title,
+        description: description,
+        courseCode: courseCode,
+        requestedBy: user?.name ?? 'Anonymous',
+        time: 'Just now',
+        status: 'open',
+      );
+
+      try {
+        await ref.read(requestNotifierProvider.notifier).createRequest(request);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Your request has been submitted!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.go(widget.isAdmin ? '/admin/requests' : '/student/requests');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add request: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final requestsState = ref.watch(requestNotifierProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -25,20 +128,16 @@ class CreateRequest extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () => context.go(
-                      isAdmin ? '/admin/requests' : '/student/requests',
+                      widget.isAdmin ? '/admin/requests' : '/student/requests',
                     ),
-                    child: const Icon(Icons.arrow_back,
-                        color: AppColors.textPrimary),
+                    child: Icon(Icons.arrow_back, color: theme.iconTheme.color),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Resource Requests',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  Text(
+                    widget.requestToEdit != null ? 'Edit Request' : 'Resource Requests',
+                    style: theme.textTheme.titleLarge,
+                  ),
                   const Spacer(),
-                  const Icon(Icons.notifications_outlined,
-                      color: AppColors.textPrimary),
                 ],
               ),
             ),
@@ -48,55 +147,43 @@ class CreateRequest extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // New Request Form
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: theme.cardColor,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.cardBorder),
+                        border: Border.all(color: theme.dividerColor),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('New Request',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary)),
+                          Text(
+                            widget.requestToEdit != null ? 'Update Details' : 'New Request',
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                          ),
                           const SizedBox(height: 14),
-                          const CustomTextField(hintText: 'Request Title'),
+                          CustomTextField(
+                            hintText: 'Request Title',
+                            controller: _titleController,
+                          ),
                           const SizedBox(height: 10),
-                          const CustomTextField(
-                              hintText: 'Course Code (e.g. CS101)'),
+                          CustomTextField(
+                            hintText: 'Course Code (e.g. CS101)',
+                            controller: _courseCodeController,
+                          ),
                           const SizedBox(height: 10),
-                          const CustomTextField(
+                          CustomTextField(
                             hintText: 'What exactly are you looking for?',
                             maxLines: 3,
+                            controller: _descriptionController,
                           ),
                           const SizedBox(height: 16),
                           Row(
                             children: [
                               Expanded(
                                 child: CustomButton(
-                                  label: 'Submit',
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Your request have been added!',
-                                            style: TextStyle(
-                                                color: AppColors.success)),
-                                        backgroundColor: AppColors.white,
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                    context.go(
-                                      isAdmin
-                                          ? '/admin/requests'
-                                          : '/student/requests',
-                                    );
-                                  },
+                                  label: widget.requestToEdit != null ? 'Update' : 'Submit',
+                                  onPressed: _handleSubmit,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -105,9 +192,7 @@ class CreateRequest extends StatelessWidget {
                                   label: 'Cancel',
                                   isOutlined: true,
                                   onPressed: () => context.go(
-                                    isAdmin
-                                        ? '/admin/requests'
-                                        : '/student/requests',
+                                    widget.isAdmin ? '/admin/requests' : '/student/requests',
                                   ),
                                 ),
                               ),
@@ -116,21 +201,42 @@ class CreateRequest extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const Text('Community Requests',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 12),
-                    _CommunityRequestCard(
-                      courseCode: 'BIO101',
-                      title: 'Need BIO101 Lab Manual Answers',
-                      description:
-                          "Does anyone have the completed lab manual for week 4? I'm stuck on the genetics section.",
-                      requestedBy: 'Alex Johnson',
-                      onMarkFulfilled: () {},
-                    ),
+                    if (widget.requestToEdit == null) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        'Community Requests',
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 12),
+                      requestsState.when(
+                        data: (requests) {
+                          final openRequests = requests.where((r) => r.status == 'open').toList();
+                          if (openRequests.isEmpty) {
+                            return const Center(child: Text('No community requests yet.'));
+                          }
+                          return Column(
+                            children: openRequests
+                                .map((r) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: _CommunityRequestCard(
+                                        courseCode: r.courseCode,
+                                        title: r.title,
+                                        description: r.description,
+                                        requestedBy: r.requestedBy,
+                                        onMarkFulfilled: widget.isAdmin
+                                            ? () => ref
+                                                .read(requestNotifierProvider.notifier)
+                                                .fulfillRequest(r.id)
+                                            : null,
+                                      ),
+                                    ))
+                                .toList(),
+                          );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (err, stack) => Text('Error: $err'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -147,24 +253,25 @@ class _CommunityRequestCard extends StatelessWidget {
   final String title;
   final String description;
   final String requestedBy;
-  final VoidCallback onMarkFulfilled;
+  final VoidCallback? onMarkFulfilled;
 
   const _CommunityRequestCard({
     required this.courseCode,
     required this.title,
     required this.description,
     required this.requestedBy,
-    required this.onMarkFulfilled,
+    this.onMarkFulfilled,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.cardBorder),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,44 +279,38 @@ class _CommunityRequestCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: AppColors.tagBackground,
+              color: AppColors.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(courseCode,
                 style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary)),
+                    fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
           ),
           const SizedBox(height: 8),
           Text(title,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
+              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           Text(description,
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.65), height: 1.4)),
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text('Requested by  ',
-                  style: TextStyle(fontSize: 12, color: AppColors.mediumGrey)),
+              Text('Requested by  ',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.5))),
               Text(requestedBy,
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary)),
+                  style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500)),
               const Spacer(),
-              GestureDetector(
-                onTap: onMarkFulfilled,
-                child: const Text('Mark Fulfilled',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary)),
-              ),
+              if (onMarkFulfilled != null)
+                GestureDetector(
+                  onTap: onMarkFulfilled,
+                  child: const Text('Mark Fulfilled',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary)),
+                ),
             ],
           ),
         ],
