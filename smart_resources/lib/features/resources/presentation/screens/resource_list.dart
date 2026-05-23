@@ -1,59 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
+import '../providers/resource_notifier.dart';
 import '../widgets/resource_card.dart';
 
-class ResourceList extends StatelessWidget {
+class ResourceList extends ConsumerStatefulWidget {
   final bool isAdmin;
 
   const ResourceList({super.key, required this.isAdmin});
 
   @override
-  Widget build(BuildContext context) {
-    final prefix = isAdmin ? '/admin' : '/student';
+  ConsumerState<ResourceList> createState() => _ResourceListState();
+}
 
-    final resources = [
-      {
-        'id': '1',
-        'title': 'Advanced Calculus Notes',
-        'description':
-            'Complete guide to limits, derivatives, and integration techniques with solved problems.',
-        'courseCode': 'MATH201',
-        'rating': 5.0,
-        'reviewCount': 1,
-        'uses': 89,
-        'fileType': 'PDF',
-      },
-      {
-        'id': '2',
-        'title': 'Data Structures Masterclass',
-        'description':
-            'Arrays, linked lists, trees, graphs, and algorithms visual explanations.',
-        'courseCode': 'CS301',
-        'rating': 5.0,
-        'reviewCount': 1,
-        'uses': 156,
-        'fileType': 'PDF',
-      },
-      {
-        'id': '3',
-        'title': 'Operating Systems Concepts',
-        'description':
-            'Process scheduling, memory management, file systems — university level.',
-        'courseCode': 'CS340',
-        'rating': 0.0,
-        'reviewCount': 0,
-        'uses': 42,
-        'fileType': 'PDF',
-      },
-    ];
+class _ResourceListState extends ConsumerState<ResourceList> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.trim();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prefix = widget.isAdmin ? '/admin' : '/student';
+    final resourcesState = ref.watch(resourceNotifierProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Resources'),
-        backgroundColor: AppColors.white,
-        foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
       body: SafeArea(
@@ -62,24 +48,26 @@ class ResourceList extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: TextField(
+                controller: _searchController,
+                onChanged: (_) => _onSearchChanged(),
                 decoration: InputDecoration(
                   hintText: 'Search by course code or keyword...',
-                  prefixIcon: const Icon(Icons.search,
-                      color: AppColors.mediumGrey, size: 20),
+                  prefixIcon: Icon(Icons.search,
+                      color: theme.iconTheme.color, size: 20),
                   filled: true,
-                  fillColor: AppColors.white,
+                  fillColor: theme.cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25),
-                    borderSide: const BorderSide(color: AppColors.lightGrey),
+                    borderSide: BorderSide(color: theme.dividerColor),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25),
-                    borderSide: const BorderSide(color: AppColors.lightGrey),
+                    borderSide: BorderSide(color: theme.dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25),
-                    borderSide:
-                        const BorderSide(color: AppColors.primary, width: 1.5),
+                    borderSide: BorderSide(
+                        color: theme.colorScheme.primary, width: 1.5),
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -89,14 +77,14 @@ class ResourceList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.menu_book_outlined,
-                      size: 18, color: AppColors.textPrimary),
+                  Icon(Icons.menu_book_outlined,
+                      size: 18, color: theme.textTheme.bodyLarge?.color),
                   const SizedBox(width: 8),
-                  const Text('All Resources',
+                  Text('All Resources',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                          color: theme.textTheme.bodyLarge?.color)),
                   const Spacer(),
                   ElevatedButton.icon(
                     onPressed: () => context.go('$prefix/upload'),
@@ -113,25 +101,52 @@ class ResourceList extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: resources.length,
-                itemBuilder: (context, i) {
-                  final r = resources[i];
-                  return ResourceCard(
-                    id: r['id'] as String,
-                    title: r['title'] as String,
-                    description: r['description'] as String,
-                    courseCode: r['courseCode'] as String,
-                    rating: r['rating'] as double,
-                    reviewCount: r['reviewCount'] as int,
-                    uses: r['uses'] as int,
-                    fileType: r['fileType'] as String,
-                    isAdmin: isAdmin,
-                    isBookmarked: i == 0,
-                    isStarred: i == 0,
+              child: resourcesState.when(
+                data: (resources) {
+                  final filtered = resources.where((resource) {
+                    if (_searchQuery.isEmpty) return true;
+                    final lowerQuery = _searchQuery.toLowerCase();
+                    return resource.title.toLowerCase().contains(lowerQuery) ||
+                        resource.description.toLowerCase().contains(lowerQuery) ||
+                        resource.courseCode.toLowerCase().contains(lowerQuery) ||
+                        resource.uploader.toLowerCase().contains(lowerQuery);
+                  }).toList();
+
+                  if (filtered.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No resources match your search.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, i) {
+                      final resource = filtered[i];
+                      return ResourceCard(
+                        id: resource.id,
+                        title: resource.title,
+                        description: resource.description,
+                        courseCode: resource.courseCode,
+                        rating: resource.rating,
+                        reviewCount: resource.reviewCount,
+                        uses: resource.uses,
+                        fileType: resource.fileType,
+                        uploader: resource.uploader,
+                        isAdmin: widget.isAdmin,
+                        isBookmarked: resource.isBookmarked,
+                        isStarred: resource.isDownloaded,
+                        filePath: resource.filePath,
+                      );
+                    },
                   );
                 },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) => Center(
+                  child: Text('Failed to load resources. ${error.toString()}'),
+                ),
               ),
             ),
           ],
