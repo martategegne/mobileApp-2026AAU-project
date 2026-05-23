@@ -1,30 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:smart_resources/features/home/presentation/providers/activity_notifier.dart';
 import '../widgets/quick_action_grid.dart';
 import '../widgets/activity_card.dart';
+import '../../../../core/theme/app_colors.dart';
 
-class AdminDash extends StatelessWidget {
+class AdminDash extends ConsumerWidget {
   const AdminDash({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final user = ref.watch(authNotifierProvider).user;
+    final activitiesState = ref.watch(activityNotifierProvider);
+
+    final prefix = user?.isAdmin ?? false ? '/admin' : '/student';
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 56, 20, 24),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
+                colors: [theme.colorScheme.primary, theme.colorScheme.primaryContainer],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -32,7 +42,7 @@ class AdminDash extends StatelessWidget {
                         'Smart Study',
                         style: TextStyle(
                           fontSize: 20,
-                          color: Color.fromARGB(179, 255, 255, 255),
+                          color: theme.colorScheme.onPrimary.withOpacity(0.7),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -40,57 +50,18 @@ class AdminDash extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {},
+                  icon: Icon(Icons.notifications_outlined, color: theme.colorScheme.onPrimary),
+                  onPressed: () => context.push('$prefix/notifications'),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: theme.colorScheme.onPrimary.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'Admin',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Welcome back text
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back, Admin',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Manage resources • Oversee platform',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
+                  child: Text(
+                    user?.role ?? 'Admin',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary, fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ),
               ],
@@ -99,48 +70,98 @@ class AdminDash extends StatelessWidget {
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Quick Actions',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome back, ${user?.name ?? 'Admin'}',
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Manage resources • Oversee platform',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  QuickActionGrid(
-                    isAdmin: true,
-                    onUpload: () => context.go('/admin/upload'),
-                    onRequest: () => context.go('/admin/requests'),
-                    onBookmarks: () => context.go('/admin/bookmarks'),
-                    onSecondary: () => context.go('/admin/resources'),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Recent Activity',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Quick Actions',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 12),
+                        QuickActionGrid(
+                          isAdmin: true,
+                          onUpload: () => context.go('/admin/upload'),
+                          onRequest: () => context.go('/admin/requests'),
+                          onBookmarks: () => context.go('/admin/bookmarks'),
+                          onSecondary: () => context.go('/admin/resources'),
+                        ),
+                        const SizedBox(height: 32),
+                        Text(
+                          'Recent Activity',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 12),
+                        activitiesState.when(
+                          data: (activities) {
+                            if (activities.isEmpty) {
+                              return Text(
+                                'No recent activity to show.',
+                                style: theme.textTheme.bodySmall,
+                              );
+                            }
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              padding: EdgeInsets.zero,
+                              itemCount: activities.length,
+                              itemBuilder: (context, index) {
+                                final activity = activities[index];
+                                IconData icon;
+                                Color color;
+                                switch (activity.type) {
+                                  case 'upload': icon = Icons.upload_outlined; color = AppColors.primary; break;
+                                  case 'request': icon = Icons.help_outline; color = AppColors.warning; break;
+                                  case 'bookmark': icon = Icons.bookmark_outline; color = AppColors.starColor; break;
+                                  case 'download': icon = Icons.download_outlined; color = Colors.blue; break;
+                                  case 'review': icon = Icons.star_outline; color = Colors.orange; break;
+                                  case 'signup': icon = Icons.person_add_outlined; color = Colors.green; break;
+                                  case 'profile_update': icon = Icons.person_outline; color = Colors.teal; break;
+                                  default: icon = Icons.notifications_none; color = AppColors.mediumGrey;
+                                }
+                                
+                                final timeParts = activity.time.split(' ');
+                                final timeStr = timeParts.length > 1 ? timeParts[1].substring(0, 5) : activity.time;
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: ActivityCard(
+                                    icon: icon,
+                                    iconColor: color,
+                                    title: "You ${activity.title}", // User requested: only specific user activities
+                                    time: timeStr,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (err, stack) => Text('Error: $err'),
+                        ),
+                        const SizedBox(height: 100),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  const ActivityCard(
-                    icon: Icons.upload_outlined,
-                    iconColor: AppColors.primary,
-                    title: "You uploaded 'Data Structures Notes'",
-                    time: '2 hours ago',
-                  ),
-                  const SizedBox(height: 8),
-                  const ActivityCard(
-                    icon: Icons.bookmark_outline,
-                    iconColor: AppColors.primary,
-                    title: "Bookmarked 'Algorithm Study Guide'",
-                    time: '1 days ago',
                   ),
                 ],
               ),
