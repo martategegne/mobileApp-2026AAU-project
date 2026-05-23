@@ -57,3 +57,9 @@ Features:
 - View list of saved/bookmarked resources
 - Remove resources from bookmarks
 - Quick access to bookmarked materials from user profile
+
+# DEMO ACCOUNTS:
+ admin: admin@studysphere.com 
+ password: admin123
+ user: student@studysphere.com
+ password: student123
