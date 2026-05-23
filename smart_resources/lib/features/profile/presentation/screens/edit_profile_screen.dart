@@ -1,21 +1,87 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/custom_button.dart';
-import '../../../../core/widgets/custom_text_field.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
+import 'package:smart_resources/core/widgets/custom_button.dart';
+import 'package:smart_resources/core/widgets/custom_text_field.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
 
-class EditProfileScreen extends StatelessWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   final bool isAdmin;
   const EditProfileScreen({super.key, required this.isAdmin});
 
   @override
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _passwordController;
+  late TextEditingController _confirmPasswordController;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = ref.read(authNotifierProvider).user;
+    _nameController = TextEditingController(text: user?.name ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    final user = ref.read(authNotifierProvider).user;
+    if (user == null) return;
+
+    if (_passwordController.text.isNotEmpty &&
+        _passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
+
+    await ref.read(authNotifierProvider.notifier).updateProfile(
+          user.id,
+          _nameController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text.isNotEmpty
+              ? _passwordController.text
+              : user.password,
+        );
+
+    final authState = ref.read(authNotifierProvider);
+    if (authState.error == null) {
+      if (mounted) {
+        context.go(widget.isAdmin ? '/admin/profile' : '/student/profile');
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authState.error!)),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = isAdmin ? 'Admin User' : 'Etagegn';
-    final email = isAdmin ? 'admin@studysphere.com' : 'student@studysphere.com';
-    final initial = isAdmin ? 'A' : 'E';
+    final theme = Theme.of(context);
+    final user = ref.watch(authNotifierProvider).user;
+    final initial = (user?.name.isNotEmpty ?? false) ? user!.name[0].toUpperCase() : '?';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -23,11 +89,11 @@ class EditProfileScreen extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: theme.brightness == Brightness.dark ? Colors.black.withOpacity(0.4) : Colors.black.withOpacity(0.06),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -36,59 +102,45 @@ class EditProfileScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Edit Profile',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  Text('Edit Profile',
+                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 20),
 
-                  // Avatar
                   Center(
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundColor: AppColors.primary.withOpacity(0.2),
-                          child: Text(initial,
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Tap here to change profile',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary)),
-                        SizedBox(width: 4),
-                        Icon(Icons.edit,
-                            size: 14, color: AppColors.textSecondary),
-                      ],
+                    child: CircleAvatar(
+                      radius: 36,
+                      backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+                      child: Text(initial,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.primary)),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  CustomTextField(hintText: name),
+                  CustomTextField(
+                    hintText: 'Full Name',
+                    controller: _nameController,
+                  ),
                   const SizedBox(height: 12),
                   CustomTextField(
-                      hintText: email,
-                      keyboardType: TextInputType.emailAddress),
+                    hintText: 'Email Address',
+                    keyboardType: TextInputType.emailAddress,
+                    controller: _emailController,
+                  ),
                   const SizedBox(height: 12),
-                  const CustomTextField(
-                      hintText: 'old password', obscureText: true),
+                  CustomTextField(
+                    hintText: 'New Password (Optional)',
+                    obscureText: true,
+                    controller: _passwordController,
+                  ),
                   const SizedBox(height: 12),
-                  const CustomTextField(
-                      hintText: 'new password', obscureText: true),
-                  const SizedBox(height: 12),
-                  const CustomTextField(
-                      hintText: 'Confirm Password', obscureText: true),
+                  CustomTextField(
+                    hintText: 'Confirm Password',
+                    obscureText: true,
+                    controller: _confirmPasswordController,
+                  ),
                   const SizedBox(height: 24),
 
                   Row(
@@ -98,7 +150,7 @@ class EditProfileScreen extends StatelessWidget {
                           label: 'Cancel',
                           isOutlined: true,
                           onPressed: () => context.go(
-                            isAdmin ? '/admin/profile' : '/student/profile',
+                            widget.isAdmin ? '/admin/profile' : '/student/profile',
                           ),
                         ),
                       ),
@@ -106,9 +158,7 @@ class EditProfileScreen extends StatelessWidget {
                       Expanded(
                         child: CustomButton(
                           label: 'Save',
-                          onPressed: () => context.go(
-                            isAdmin ? '/admin/profile' : '/student/profile',
-                          ),
+                          onPressed: _saveProfile,
                         ),
                       ),
                     ],
