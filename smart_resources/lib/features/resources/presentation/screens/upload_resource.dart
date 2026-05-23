@@ -1,24 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/custom_button.dart';
-import '../../../../core/widgets/custom_text_field.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
+import 'package:smart_resources/core/widgets/custom_button.dart';
+import 'package:smart_resources/core/widgets/custom_text_field.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:smart_resources/features/resources/data/models/resource_model.dart';
+import 'package:smart_resources/features/resources/presentation/providers/resource_notifier.dart';
 
-class UploadResource extends StatefulWidget {
+class UploadResource extends ConsumerStatefulWidget {
   final bool isAdmin;
+  final ResourceModel? resourceToEdit;
 
   const UploadResource({
     super.key,
     required this.isAdmin,
+    this.resourceToEdit,
   });
 
   @override
-  State<UploadResource> createState() => _UploadResourceState();
+  ConsumerState<UploadResource> createState() => _UploadResourceState();
 }
 
-class _UploadResourceState extends State<UploadResource> {
+class _UploadResourceState extends ConsumerState<UploadResource> {
+  late TextEditingController _titleController;
+  late TextEditingController _courseCodeController;
+  late TextEditingController _descriptionController;
+
   String _selectedFileType = 'PDF';
   String _selectedCategory = 'Lecture Notes';
+  String? _pickedFilePath;
+  String? _pickedFileName;
 
   final List<String> _fileTypes = ['PDF', 'DOCX', 'PPTX', 'ZIP'];
   final List<String> _categories = [
@@ -29,35 +42,155 @@ class _UploadResourceState extends State<UploadResource> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.resourceToEdit?.title ?? '');
+    _courseCodeController = TextEditingController(text: widget.resourceToEdit?.courseCode ?? '');
+    _descriptionController = TextEditingController(text: widget.resourceToEdit?.description ?? '');
+    if (widget.resourceToEdit != null) {
+      _selectedFileType = widget.resourceToEdit!.fileType;
+      _pickedFilePath = widget.resourceToEdit!.filePath;
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _courseCodeController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        setState(() {
+          _pickedFilePath = result.files.single.path;
+          _pickedFileName = result.files.single.name;
+          final extension = result.files.single.extension?.toUpperCase();
+          if (extension != null && _fileTypes.contains(extension)) {
+            _selectedFileType = extension;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking file: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleUpload() async {
+    final title = _titleController.text.trim();
+    final courseCode = _courseCodeController.text.trim();
+    final description = _descriptionController.text.trim();
+    final authState = ref.read(authNotifierProvider);
+    final user = authState.user;
+
+    if (title.isEmpty || courseCode.isEmpty || description.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all required fields')),
+      );
+      return;
+    }
+
+    if (widget.resourceToEdit == null && _pickedFilePath == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a file to upload')),
+      );
+      return;
+    }
+
+    if (widget.resourceToEdit != null) {
+      final updatedResource = widget.resourceToEdit!.copyWith(
+        title: title,
+        courseCode: courseCode,
+        description: description,
+        fileType: _selectedFileType,
+        filePath: _pickedFilePath,
+      );
+      try {
+        await ref.read(resourceNotifierProvider.notifier).updateResource(updatedResource);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Resource updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.go(widget.isAdmin ? '/admin/resources' : '/student/resources');
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } else {
+      final resource = ResourceModel(
+        id: 'res-${DateTime.now().millisecondsSinceEpoch}',
+        title: title,
+        description: description,
+        courseCode: courseCode,
+        rating: 0.0,
+        reviewCount: 0,
+        uses: 0,
+        fileType: _selectedFileType,
+        uploader: user?.name ?? 'Anonymous',
+        isApproved: widget.isAdmin,
+        isBookmarked: false,
+        isDownloaded: false,
+        filePath: _pickedFilePath,
+      );
+
+      try {
+        await ref.read(resourceNotifierProvider.notifier).uploadResource(resource);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('File uploaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.go(widget.isAdmin ? '/admin/resources' : '/student/resources');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Upload failed: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
-            // App bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => context.go(
-                      widget.isAdmin
-                          ? '/admin/resources'
-                          : '/student/resources',
+                      widget.isAdmin ? '/admin/resources' : '/student/resources',
                     ),
-                    child: const Icon(Icons.arrow_back,
-                        color: AppColors.textPrimary),
+                    child: Icon(Icons.arrow_back, color: theme.iconTheme.color),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Upload Resource',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  Text(
+                    widget.resourceToEdit != null ? 'Edit Resource' : 'Upload Resource',
+                    style: theme.textTheme.titleLarge,
+                  ),
                   const Spacer(),
-                  const Icon(Icons.notifications_outlined,
-                      color: AppColors.textPrimary),
                 ],
               ),
             ),
@@ -67,59 +200,70 @@ class _UploadResourceState extends State<UploadResource> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // File upload area
-                    Container(
-                      width: double.infinity,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.lightGrey,
-                            style: BorderStyle.solid),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.cloud_upload_outlined,
+                    // File picker box
+                    GestureDetector(
+                      onTap: _pickFile,
+                      child: Container(
+                        width: double.infinity,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _pickedFilePath != null
+                                ? AppColors.primary
+                                : theme.dividerColor,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _pickedFilePath != null
+                                  ? Icons.file_present
+                                  : Icons.cloud_upload_outlined,
                               size: 36,
-                              color: AppColors.primary.withOpacity(0.7)),
-                          const SizedBox(height: 8),
-                          const Text('Tap to select file',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textPrimary)),
-                          const SizedBox(height: 4),
-                          const Text('PDF, DOCX, PPTX, or ZIP up to 50MB',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppColors.mediumGrey)),
-                        ],
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _pickedFileName ??
+                                  (_pickedFilePath != null
+                                      ? 'File selected'
+                                      : 'Tap to select file from device'),
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (_pickedFileName == null && _pickedFilePath == null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  'PDF, DOCX, PPTX, or ZIP',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(0.45),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Title *',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 6),
-                    const CustomTextField(hintText: 'e.g. Midterm Study Guide'),
+                    CustomTextField(
+                      label: 'Title *',
+                      hintText: 'e.g. Midterm Study Guide',
+                      controller: _titleController,
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Course Code *',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textPrimary)),
-                              SizedBox(height: 6),
-                              CustomTextField(hintText: 'e.g. CS101'),
-                            ],
+                        Expanded(
+                          child: CustomTextField(
+                            label: 'Course Code *',
+                            hintText: 'e.g. CS101',
+                            controller: _courseCodeController,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -127,34 +271,35 @@ class _UploadResourceState extends State<UploadResource> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('File Type',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textPrimary)),
+                              Text(
+                                'File Type',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: AppColors.white,
-                                  border:
-                                      Border.all(color: AppColors.lightGrey),
+                                  color: theme.cardColor,
+                                  border: Border.all(color: theme.dividerColor),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
                                     value: _selectedFileType,
                                     isExpanded: true,
+                                    dropdownColor: theme.cardColor,
                                     items: _fileTypes
                                         .map((t) => DropdownMenuItem(
-                                            value: t, child: Text(t)))
+                                            value: t,
+                                            child: Text(t,
+                                                style: theme.textTheme.bodyMedium)))
                                         .toList(),
                                     onChanged: (v) =>
                                         setState(() => _selectedFileType = v!),
-                                    style: const TextStyle(
-                                        fontSize: 14,
-                                        color: AppColors.textPrimary),
+                                    style: theme.textTheme.bodyMedium,
                                   ),
                                 ),
                               ),
@@ -164,65 +309,51 @@ class _UploadResourceState extends State<UploadResource> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text('Category',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary)),
+                    Text(
+                      'Category',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.white,
-                        border: Border.all(color: AppColors.lightGrey),
+                        color: theme.cardColor,
+                        border: Border.all(color: theme.dividerColor),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _selectedCategory,
                           isExpanded: true,
+                          dropdownColor: theme.cardColor,
                           items: _categories
-                              .map((c) =>
-                                  DropdownMenuItem(value: c, child: Text(c)))
+                              .map((c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(c, style: theme.textTheme.bodyMedium)))
                               .toList(),
-                          onChanged: (v) =>
-                              setState(() => _selectedCategory = v!),
-                          style: const TextStyle(
-                              fontSize: 14, color: AppColors.textPrimary),
+                          onChanged: (v) => setState(() => _selectedCategory = v!),
+                          style: theme.textTheme.bodyMedium,
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Description *',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 6),
-                    const CustomTextField(
+                    CustomTextField(
+                      label: 'Description *',
                       hintText: "Describe what's included in this resource...",
                       maxLines: 4,
+                      controller: _descriptionController,
                     ),
                     const SizedBox(height: 28),
                     CustomButton(
-                      label: 'Upload Resource',
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('File uploaded successfully!',
-                                style: TextStyle(color: AppColors.success)),
-                            backgroundColor: AppColors.white,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                        context.go(
-                          widget.isAdmin
-                              ? '/admin/resources'
-                              : '/student/resources',
-                        );
-                      },
+                      label: widget.resourceToEdit != null
+                          ? 'Update Resource'
+                          : 'Upload Resource',
+                      onPressed: _handleUpload,
                     ),
+                    const SizedBox(height: 50),
                   ],
                 ),
               ),
