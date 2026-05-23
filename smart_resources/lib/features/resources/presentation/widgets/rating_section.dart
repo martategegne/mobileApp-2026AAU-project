@@ -1,28 +1,95 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/custom_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
+import 'package:smart_resources/core/widgets/custom_button.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
+import '../../domain/entities/review.dart';
+import '../providers/resource_notifier.dart';
 
-class RatingSection extends StatefulWidget {
-  const RatingSection({super.key});
+class RatingSection extends ConsumerStatefulWidget {
+  final String resourceId;
+  const RatingSection({super.key, required this.resourceId});
 
   @override
-  State<RatingSection> createState() => _RatingSectionState();
+  ConsumerState<RatingSection> createState() => _RatingSectionState();
 }
 
-class _RatingSectionState extends State<RatingSection> {
+class _RatingSectionState extends ConsumerState<RatingSection> {
   int _selectedStars = 0;
+  final _commentController = TextEditingController();
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitReview() async {
+    final user = ref.read(authNotifierProvider).user;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to submit a review')),
+      );
+      return;
+    }
+
+    if (_selectedStars == 0) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a star rating')),
+      );
+      return;
+    }
+
+    final review = Review(
+      id: 'rev-${DateTime.now().millisecondsSinceEpoch}',
+      resourceId: widget.resourceId,
+      userId: user.id,
+      userName: user.name,
+      rating: _selectedStars.toDouble(),
+      comment: _commentController.text.trim(),
+      time: DateTime.now().toString().split(' ')[0],
+    );
+
+    try {
+      await ref.read(resourceNotifierProvider.notifier).addReview(review);
+      if (mounted) {
+        setState(() {
+          _selectedStars = 0;
+          _commentController.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Review submitted!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final reviewsAsync = ref.watch(resourceReviewsProvider(widget.resourceId));
+    final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ratings & Reviews',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        Text('Ratings & Reviews',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 16),
-        const Text('Leave a Review',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        Text('Leave a Review',
+            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
         const SizedBox(height: 10),
+        // Star selector
         Row(
           children: List.generate(5, (i) {
             return GestureDetector(
@@ -36,48 +103,75 @@ class _RatingSectionState extends State<RatingSection> {
           }),
         ),
         const SizedBox(height: 10),
+        // Review text field - theme aware
         TextField(
+          controller: _commentController,
           maxLines: 3,
+          style: theme.textTheme.bodyMedium,
           decoration: InputDecoration(
             hintText: 'What did you think of this resource?',
-            hintStyle: const TextStyle(color: AppColors.mediumGrey, fontSize: 13),
+            hintStyle: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.45),
+              fontSize: 13,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.lightGrey),
+              borderSide: BorderSide(color: theme.dividerColor),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.lightGrey),
+              borderSide: BorderSide(color: theme.dividerColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
             ),
             filled: true,
-            fillColor: AppColors.white,
+            fillColor: theme.cardColor,
           ),
         ),
         const SizedBox(height: 14),
-        SizedBox(
-          width: 140,
-          child: CustomButton(
-            label: 'Submit Review',
-            onPressed: () {},
-            backgroundColor: AppColors.darkGrey,
-          ),
+        CustomButton(
+          label: 'Submit Review',
+          onPressed: _submitReview,
+          backgroundColor: AppColors.darkGrey,
+          width: 150,
         ),
-        const SizedBox(height: 20),
-        _ReviewItem(
-          initial: '',
-          name: '',
-          date: '2023-10-18',
-          comment: 'Saved my life on the midterm! Super clear.',
-          rating: 5,
-          isAnonymous: true,
-        ),
-        const SizedBox(height: 12),
-        _ReviewItem(
-          initial: 'M',
-          name: 'Mike T.',
-          date: '2023-10-20',
-          comment: 'Good, but missing some details on sorting algorithms.',
-          rating: 4,
+        const SizedBox(height: 24),
+        reviewsAsync.when(
+          data: (reviews) {
+            if (reviews.isEmpty) {
+              return Text(
+                'No reviews yet. Be the first to review!',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.55),
+                ),
+              );
+            }
+            return ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: reviews.length,
+              itemBuilder: (context, index) {
+                final review = reviews[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _ReviewItem(
+                    initial: review.userName.isNotEmpty
+                        ? review.userName[0].toUpperCase()
+                        : '?',
+                    name: review.userName,
+                    date: review.time,
+                    comment: review.comment,
+                    rating: review.rating.toInt(),
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Text('Error loading reviews: $err'),
         ),
       ],
     );
@@ -103,6 +197,8 @@ class _ReviewItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -113,7 +209,9 @@ class _ReviewItem extends StatelessWidget {
               ? const Icon(Icons.person_outline, size: 16, color: AppColors.primary)
               : Text(initial,
                   style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary)),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -123,24 +221,45 @@ class _ReviewItem extends StatelessWidget {
               Row(
                 children: [
                   if (!isAnonymous)
-                    Text(name,
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Flexible(
+                      child: Text(
+                        name,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const Spacer(),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: List.generate(
-                        5,
-                        (i) => Icon(
-                              i < rating ? Icons.star : Icons.star_outline,
-                              size: 12,
-                              color: AppColors.starColor,
-                            )),
+                      5,
+                      (i) => Icon(
+                        i < rating ? Icons.star : Icons.star_outline,
+                        size: 12,
+                        color: AppColors.starColor,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              Text(date, style: const TextStyle(fontSize: 11, color: AppColors.mediumGrey)),
-              const SizedBox(height: 4),
-              Text(comment, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              Text(
+                date,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                ),
+              ),
+              if (comment.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  comment,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.75),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
