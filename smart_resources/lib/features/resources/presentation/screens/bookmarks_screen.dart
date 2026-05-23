@@ -1,180 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
+import '../providers/resource_notifier.dart';
+import '../widgets/resource_card.dart';
 
-class BookmarksScreen extends StatelessWidget {
+class BookmarksScreen extends ConsumerWidget {
   const BookmarksScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bookmarksAsync = ref.watch(bookmarkedResourcesProvider);
+
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Bookmarks'),
-        backgroundColor: AppColors.white,
-        foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 20, 16, 16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
               child: Row(
                 children: [
                   Icon(Icons.bookmark_outline,
-                      color: AppColors.primary, size: 22),
-                  SizedBox(width: 10),
+                      color: theme.colorScheme.primary, size: 22),
+                  const SizedBox(width: 10),
                   Text('Saved Resources',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _BookmarkCard(
-                    title: 'Advanced Calculus Notes',
-                    description:
-                        'Complete guide to limits, derivatives, and integration techniques with solved problems.',
-                    courseCode: 'MATH201',
-                    rating: 5.0,
-                    reviewCount: 1,
-                    uses: 89,
-                    isBookmarked: true,
-                    isStarred: true,
-                    onTap: () => context.go('/student/resources/1'),
-                  ),
-                ],
+              child: bookmarksAsync.when(
+                data: (resources) {
+                  if (resources.isEmpty) {
+                    return const Center(child: Text('No saved resources yet.'));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: resources.length,
+                    itemBuilder: (context, index) {
+                      final resource = resources[index];
+                      return ResourceCard(
+                        id: resource.id,
+                        title: resource.title,
+                        description: resource.description,
+                        courseCode: resource.courseCode,
+                        rating: resource.rating,
+                        reviewCount: resource.reviewCount,
+                        uses: resource.uses,
+                        fileType: resource.fileType,
+                        uploader: resource.uploader, // Added missing uploader
+                        isAdmin: false,
+                        isBookmarked: resource.isBookmarked,
+                        isStarred: resource.isDownloaded,
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(child: Text('Error: $err')),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BookmarkCard extends StatelessWidget {
-  final String title;
-  final String description;
-  final String courseCode;
-  final double rating;
-  final int reviewCount;
-  final int uses;
-  final bool isBookmarked;
-  final bool isStarred;
-  final VoidCallback onTap;
-
-  const _BookmarkCard({
-    required this.title,
-    required this.description,
-    required this.courseCode,
-    required this.rating,
-    required this.reviewCount,
-    required this.uses,
-    required this.isBookmarked,
-    required this.isStarred,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.cardBorder),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.menu_book_outlined,
-                    color: AppColors.mediumGrey, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary)),
-                      const SizedBox(height: 4),
-                      Text(description,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.tagBackground,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(courseCode,
-                      style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                ...List.generate(
-                    5,
-                    (i) => Icon(
-                          i < rating ? Icons.star : Icons.star_outline,
-                          size: 14,
-                          color: AppColors.starColor,
-                        )),
-                const SizedBox(width: 6),
-                Text('$rating ($reviewCount reviews)',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.download_outlined,
-                    size: 14, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Text('$uses  uses',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                const Spacer(),
-                Icon(Icons.bookmark,
-                    size: 18,
-                    color: isBookmarked
-                        ? AppColors.warning
-                        : AppColors.mediumGrey),
-                const SizedBox(width: 8),
-                Icon(Icons.star,
-                    size: 18,
-                    color:
-                        isStarred ? AppColors.starColor : AppColors.mediumGrey),
-              ],
             ),
           ],
         ),

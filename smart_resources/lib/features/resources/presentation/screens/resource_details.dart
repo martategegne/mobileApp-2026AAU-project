@@ -1,132 +1,130 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/custom_button.dart';
+import 'package:smart_resources/core/widgets/custom_button.dart';
+import '../providers/resource_notifier.dart';
 import '../widgets/rating_section.dart';
+import '../../../../core/theme/app_colors.dart';
 
-class ResourceDetails extends StatelessWidget {
+class ResourceDetails extends ConsumerWidget {
   final String resourceId;
   final bool isAdmin;
 
-  const ResourceDetails({super.key, required this.resourceId, required this.isAdmin});
+  const ResourceDetails(
+      {super.key, required this.resourceId, required this.isAdmin});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resourceState = ref.watch(resourceDetailsProvider(resourceId));
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => context.go(isAdmin ? '/admin/resources' : '/student/resources'),
-                    child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-                  ),
-                  const Spacer(),
-                  const Icon(Icons.bookmark_outline, color: AppColors.textPrimary),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Tag row
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.tagBackground,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('CS101',
-                              style: TextStyle(
-                                  fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+        child: resourceState.when(
+          data: (resource) {
+            if (resource == null) {
+              return const Center(child: Text('Resource not found.'));
+            }
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => context.go(isAdmin ? '/admin/resources' : '/student/resources'),
+                        child: Icon(Icons.arrow_back, color: theme.iconTheme.color),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () {
+                          ref.read(resourceNotifierProvider.notifier).toggleBookmark(resource.id, !resource.isBookmarked);
+                        },
+                        child: Icon(
+                          resource.isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                          color: resource.isBookmarked ? theme.colorScheme.secondary : theme.iconTheme.color,
                         ),
-                        const SizedBox(width: 8),
-                        const Text('Study Guides',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('CS101 Midterm Study Guide',
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    const SizedBox(height: 10),
-                    // Star rating
-                    Row(
-                      children: [
-                        ...List.generate(
-                            5,
-                            (i) => Icon(
-                                  i < 4 ? Icons.star : Icons.star_half,
-                                  color: AppColors.starColor,
-                                  size: 18,
-                                )),
-                        const SizedBox(width: 6),
-                        const Text('4.8  (12)',
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Comprehensive study guide covering chapters 1-5, including practice problems for algorithms and data structures.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5),
-                    ),
-                    const SizedBox(height: 16),
-                    // Meta info
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline, size: 16, color: AppColors.mediumGrey),
-                        const SizedBox(width: 6),
-                        const Text('Alem Abebe',
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                        const SizedBox(width: 20),
-                        const Icon(Icons.calendar_today_outlined,
-                            size: 14, color: AppColors.mediumGrey),
-                        const SizedBox(width: 6),
-                        const Text('2023-10-15',
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.description_outlined,
-                            size: 16, color: AppColors.mediumGrey),
-                        const SizedBox(width: 6),
-                        const Text('PDF',
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    CustomButton(
-                      label: 'Download Resource',
-                      icon: const Icon(Icons.download_outlined, size: 18),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Your download have started!',
-                                style: TextStyle(color: AppColors.success)),
-                            backgroundColor: AppColors.white,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 28),
-                    const RatingSection(),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ],
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.tagBackground,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(resource.courseCode,
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(resource.fileType,
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(resource.title,
+                            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            ...List.generate(5, (i) => Icon(
+                              i < resource.rating.floor() ? Icons.star : (i < resource.rating ? Icons.star_half : Icons.star_outline),
+                              color: AppColors.starColor,
+                              size: 18,
+                            )),
+                            const SizedBox(width: 6),
+                            Text('${resource.rating.toStringAsFixed(1)} (${resource.reviewCount})',
+                                style: theme.textTheme.bodySmall?.copyWith(fontSize: 13, color: theme.textTheme.bodySmall?.color)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(resource.description,
+                            style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color, height: 1.5)),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.person_outline, size: 16, color: theme.textTheme.bodySmall?.color),
+                            const SizedBox(width: 6),
+                            Text(resource.uploader,
+                                style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color)),
+                            const SizedBox(width: 20),
+                            Icon(Icons.calendar_today_outlined, size: 14, color: theme.textTheme.bodySmall?.color),
+                            const SizedBox(width: 6),
+                            Text('Recently', style: theme.textTheme.bodySmall?.copyWith(fontSize: 13, color: theme.textTheme.bodySmall?.color)),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        CustomButton(
+                          label: 'Download Resource',
+                          icon: const Icon(Icons.download_outlined, size: 18),
+                          onPressed: () {
+                            ref.read(resourceNotifierProvider.notifier).markDownloaded(resource.id);
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Download started!')));
+                          },
+                        ),
+                        const SizedBox(height: 28),
+                        RatingSection(resourceId: resource.id),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(child: Text(error.toString())),
         ),
       ),
     );
