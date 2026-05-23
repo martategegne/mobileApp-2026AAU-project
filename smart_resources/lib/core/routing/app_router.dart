@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smart_resources/features/requests/data/models/request_model.dart';
+import 'package:smart_resources/features/resources/data/models/resource_model.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/home/presentation/screens/student_dash.dart';
@@ -16,6 +18,8 @@ import '../../features/admin_panel/presentation/screens/manage_requests.dart';
 import '../../features/admin_panel/presentation/screens/manage_users.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/profile/presentation/screens/preferences_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../widgets/main_nav_bar.dart';
 
 class AppRouter {
@@ -54,7 +58,10 @@ class AppRouter {
           ),
           GoRoute(
             path: '/student/upload',
-            builder: (context, state) => const UploadResource(isAdmin: false),
+            builder: (context, state) {
+              final resource = state.extra as ResourceModel?;
+              return UploadResource(isAdmin: false, resourceToEdit: resource);
+            },
           ),
           GoRoute(
             path: '/student/requests',
@@ -62,7 +69,10 @@ class AppRouter {
           ),
           GoRoute(
             path: '/student/requests/new',
-            builder: (context, state) => const CreateRequest(isAdmin: false),
+            builder: (context, state) {
+              final request = state.extra as RequestModel?;
+              return CreateRequest(isAdmin: false, requestToEdit: request);
+            },
           ),
           GoRoute(
             path: '/student/bookmarks',
@@ -80,6 +90,14 @@ class AppRouter {
             path: '/student/profile/edit',
             builder: (context, state) =>
                 const EditProfileScreen(isAdmin: false),
+          ),
+          GoRoute(
+            path: '/student/profile/preferences',
+            builder: (context, state) => const PreferencesScreen(),
+          ),
+          GoRoute(
+            path: '/student/notifications',
+            builder: (context, state) => const NotificationsScreen(),
           ),
         ],
       ),
@@ -107,7 +125,10 @@ class AppRouter {
           ),
           GoRoute(
             path: '/admin/upload',
-            builder: (context, state) => const UploadResource(isAdmin: true),
+            builder: (context, state) {
+              final resource = state.extra as ResourceModel?;
+              return UploadResource(isAdmin: true, resourceToEdit: resource);
+            },
           ),
           GoRoute(
             path: '/admin/requests',
@@ -115,7 +136,10 @@ class AppRouter {
           ),
           GoRoute(
             path: '/admin/requests/new',
-            builder: (context, state) => const CreateRequest(isAdmin: true),
+            builder: (context, state) {
+              final request = state.extra as RequestModel?;
+              return CreateRequest(isAdmin: true, requestToEdit: request);
+            },
           ),
           GoRoute(
             path: '/admin/bookmarks',
@@ -128,6 +152,14 @@ class AppRouter {
           GoRoute(
             path: '/admin/profile/edit',
             builder: (context, state) => const EditProfileScreen(isAdmin: true),
+          ),
+          GoRoute(
+            path: '/admin/profile/preferences',
+            builder: (context, state) => const PreferencesScreen(),
+          ),
+          GoRoute(
+            path: '/admin/notifications',
+            builder: (context, state) => const NotificationsScreen(),
           ),
           GoRoute(
             path: '/admin/panel/resources',

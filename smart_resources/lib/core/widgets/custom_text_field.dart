@@ -25,16 +25,19 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final labelColor = theme.colorScheme.onSurface.withOpacity(0.85);
+    final textColor = theme.colorScheme.onSurface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
           Text(
             label!,
-            style: const TextStyle(
+            style: theme.textTheme.bodySmall?.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+              color: labelColor,
             ),
           ),
           const SizedBox(height: 6),
@@ -44,12 +47,15 @@ class CustomTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          cursorColor: theme.colorScheme.primary,
+          style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
           decoration: InputDecoration(
             hintText: hintText,
             suffixIcon: suffixIcon,
             prefixIcon: prefixIcon,
-            hintStyle: const TextStyle(color: AppColors.mediumGrey, fontSize: 14),
+            hintStyle: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
         ),
       ],
