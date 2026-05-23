@@ -13,12 +13,14 @@ class RoleSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface.withOpacity(0.75);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Select Role to Login As:',
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: theme.textTheme.bodySmall?.copyWith(fontSize: 13, color: textColor),
         ),
         const SizedBox(height: 8),
         Row(
@@ -69,7 +71,7 @@ class _RadioOption extends StatelessWidget {
             activeColor: AppColors.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          Text(label, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+          Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );
