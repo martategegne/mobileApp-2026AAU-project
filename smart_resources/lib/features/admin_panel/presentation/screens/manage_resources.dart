@@ -1,53 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:smart_resources/features/resources/presentation/providers/resource_notifier.dart';
 import '../widgets/admin_action_row.dart';
+import '../../../../core/theme/app_colors.dart';
 
-class ManageResources extends StatefulWidget {
+class ManageResources extends ConsumerWidget {
   const ManageResources({super.key});
 
   @override
-  State<ManageResources> createState() => _ManageResourcesState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final resourcesState = ref.watch(resourceNotifierProvider);
 
-class _ManageResourcesState extends State<ManageResources> {
-  final List<Map<String, dynamic>> _resources = [
-    {
-      'name': 'CS101 Midterm Study',
-      'code': 'CS301',
-      'uploader': 'Sarah Smith',
-      'approved': true
-    },
-    {
-      'name': 'Calculus II Final Exam',
-      'code': 'MATH201',
-      'uploader': 'Alex Johnson',
-      'approved': false
-    },
-    {
-      'name': 'Physics Mechanics',
-      'code': 'PHY201',
-      'uploader': 'Sarah Smith',
-      'approved': true
-    },
-    {
-      'name': 'Literature Essay',
-      'code': 'ENG102',
-      'uploader': 'Alex Johnson',
-      'approved': false
-    },
-    {
-      'name': 'Organic Chemistry',
-      'code': 'CHEM201',
-      'uploader': 'Sarah Smith',
-      'approved': false
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -67,68 +35,97 @@ class _ManageResourcesState extends State<ManageResources> {
               },
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Manage Resources',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.cardBorder),
-                      ),
-                      child: Column(
-                        children: [
-                          const Row(
-                            children: [
-                              Expanded(
-                                  flex: 3, child: _TableHeader('Resource')),
-                              Expanded(
-                                  flex: 2, child: _TableHeader('Uploader')),
-                              Expanded(
-                                  flex: 2, child: _TableHeader('Approval')),
-                              SizedBox(width: 24, child: _TableHeader('Act.')),
-                            ],
-                          ),
-                          const Divider(height: 16),
-                          ...List.generate(_resources.length, (i) {
-                            final r = _resources[i];
-                            return Column(
+              child: resourcesState.when(
+                data: (resources) => SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Manage Resources',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: theme.dividerColor),
+                        ),
+                        child: Column(
+                          children: [
+                            const Row(
                               children: [
-                                AdminResourceRow(
-                                  resourceName: r['name'],
-                                  courseCode: r['code'],
-                                  uploader: r['uploader'],
-                                  isApproved: r['approved'],
-                                  onApprove: () => setState(
-                                      () => _resources[i]['approved'] = true),
-                                  onDelete: () =>
-                                      setState(() => _resources.removeAt(i)),
-                                ),
-                                if (i < _resources.length - 1)
-                                  const Divider(
-                                      height: 1, color: AppColors.cardBorder),
+                                Expanded(
+                                    flex: 3, child: _TableHeader('Resource')),
+                                Expanded(
+                                    flex: 2, child: _TableHeader('Uploader')),
+                                Expanded(
+                                    flex: 2, child: _TableHeader('Approval')),
+                                SizedBox(width: 50, child: _TableHeader('Act.')),
                               ],
-                            );
-                          }),
-                        ],
+                            ),
+                            const Divider(height: 16),
+                            if (resources.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: Text('No resources found.'),
+                              ),
+                            ...List.generate(resources.length, (i) {
+                              final r = resources[i];
+                              return Column(
+                                children: [
+                                  AdminResourceRow(
+                                    resourceName: r.title,
+                                    courseCode: r.courseCode,
+                                    uploader: r.uploader,
+                                    isApproved: r.isApproved,
+                                    onApprove: () => ref
+                                        .read(resourceNotifierProvider.notifier)
+                                        .approveResource(r.id),
+                                    onEdit: null,
+                                    onDelete: () => _showDeleteDialog(context, ref, r.id),
+                                  ),
+                                  if (i < resources.length - 1)
+                                    Divider(height: 1, color: theme.dividerColor),
+                                ],
+                              );
+                            }),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(child: Text('Error: $err')),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, WidgetRef ref, String id) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: const Text('Delete Resource'),
+          content: const Text('Are you sure you want to delete this resource?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                ref.read(resourceNotifierProvider.notifier).deleteResource(id);
+                Navigator.pop(context);
+              },
+              child: Text('Delete', style: TextStyle(color: theme.colorScheme.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -141,6 +138,7 @@ class _AdminHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
@@ -148,27 +146,22 @@ class _AdminHeader extends StatelessWidget {
           if (onBack != null)
             GestureDetector(
               onTap: onBack,
-              child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+              child: Icon(Icons.arrow_back, color: theme.iconTheme.color),
             ),
           if (onBack != null) const SizedBox(width: 12),
           Expanded(
             child: Text(title,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           ),
-          const Icon(Icons.notifications_outlined,
-              color: AppColors.textPrimary),
+           Icon(Icons.notifications_outlined, color: theme.iconTheme.color),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.lightGrey.withOpacity(0.5),
+              color: theme.dividerColor.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Admin',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            child: Text('Admin', style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withOpacity(0.8))),
           ),
         ],
       ),
@@ -191,12 +184,13 @@ class _AdminTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.cardBorder),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Row(
         children: List.generate(tabs.length, (i) {
@@ -207,8 +201,7 @@ class _AdminTabBar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color:
-                      isActive ? AppColors.tagBackground : Colors.transparent,
+                  color: isActive ? theme.colorScheme.primary.withOpacity(0.12) : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -217,8 +210,8 @@ class _AdminTabBar extends StatelessWidget {
                     Icon(icons[i],
                         size: 14,
                         color: isActive
-                            ? AppColors.primary
-                            : AppColors.mediumGrey),
+                            ? theme.colorScheme.primary
+                            : theme.textTheme.bodySmall?.color),
                     const SizedBox(width: 4),
                     Text(tabs[i],
                         style: TextStyle(
@@ -226,8 +219,8 @@ class _AdminTabBar extends StatelessWidget {
                             fontWeight:
                                 isActive ? FontWeight.w600 : FontWeight.w400,
                             color: isActive
-                                ? AppColors.primary
-                                : AppColors.textSecondary)),
+                                ? theme.colorScheme.primary
+                                : theme.textTheme.bodySmall?.color)),
                   ],
                 ),
               ),
@@ -245,10 +238,11 @@ class _TableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Text(text,
-        style: const TextStyle(
+        style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColors.mediumGrey));
+            color: theme.textTheme.bodySmall?.color?.withOpacity(0.75)));
   }
 }

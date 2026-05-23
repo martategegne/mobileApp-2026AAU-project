@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
 import '../widgets/admin_action_row.dart';
 
 class _AdminHeader extends StatelessWidget {
@@ -11,6 +13,7 @@ class _AdminHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
@@ -18,27 +21,23 @@ class _AdminHeader extends StatelessWidget {
           if (onBack != null)
             GestureDetector(
               onTap: onBack,
-              child: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+              child: Icon(Icons.arrow_back, color: theme.iconTheme.color),
             ),
           if (onBack != null) const SizedBox(width: 12),
           Expanded(
             child: Text(title,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           ),
-          const Icon(Icons.notifications_outlined,
-              color: AppColors.textPrimary),
+          Icon(Icons.notifications_outlined, color: theme.iconTheme.color),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.lightGrey.withOpacity(0.5),
+              color: theme.dividerColor.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Admin',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            child: Text('Admin',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withOpacity(0.8))),
           ),
         ],
       ),
@@ -61,12 +60,13 @@ class _AdminTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.cardBorder),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Row(
         children: List.generate(tabs.length, (i) {
@@ -77,8 +77,7 @@ class _AdminTabBar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color:
-                      isActive ? AppColors.tagBackground : Colors.transparent,
+                  color: isActive ? theme.colorScheme.primary.withOpacity(0.12) : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -87,8 +86,8 @@ class _AdminTabBar extends StatelessWidget {
                     Icon(icons[i],
                         size: 14,
                         color: isActive
-                            ? AppColors.primary
-                            : AppColors.mediumGrey),
+                            ? theme.colorScheme.primary
+                            : theme.textTheme.bodySmall?.color),
                     const SizedBox(width: 4),
                     Text(tabs[i],
                         style: TextStyle(
@@ -96,8 +95,8 @@ class _AdminTabBar extends StatelessWidget {
                             fontWeight:
                                 isActive ? FontWeight.w600 : FontWeight.w400,
                             color: isActive
-                                ? AppColors.primary
-                                : AppColors.textSecondary)),
+                                ? theme.colorScheme.primary
+                                : theme.textTheme.bodySmall?.color)),
                   ],
                 ),
               ),
@@ -115,53 +114,25 @@ class _TableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Text(text,
-        style: const TextStyle(
+        style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColors.mediumGrey));
+            color: theme.textTheme.bodySmall?.color?.withOpacity(0.75)));
   }
 }
 
-class ManageUsers extends StatefulWidget {
+class ManageUsers extends ConsumerWidget {
   const ManageUsers({super.key});
 
   @override
-  State<ManageUsers> createState() => _ManageUsersState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usersState = ref.watch(userListProvider);
+    final theme = Theme.of(context);
 
-class _ManageUsersState extends State<ManageUsers> {
-  final List<Map<String, dynamic>> _users = [
-    {
-      'name': 'Etagegn',
-      'email': 'student@studysphere.com',
-      'role': 'user',
-      'status': 'suspended'
-    },
-    {
-      'name': 'Admin User',
-      'email': 'admin@studysphere.com',
-      'role': 'admin',
-      'status': 'active'
-    },
-    {
-      'name': 'Alex Johnson',
-      'email': 'alex@studysphere.com',
-      'role': 'user',
-      'status': 'suspended'
-    },
-    {
-      'name': 'Sarah Smith',
-      'email': 'sarah@studysphere.com',
-      'role': 'user',
-      'status': 'active'
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -181,71 +152,95 @@ class _ManageUsersState extends State<ManageUsers> {
               },
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Manage Users',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.cardBorder),
-                      ),
-                      child: Column(
-                        children: [
-                          const Row(
-                            children: [
-                              Expanded(flex: 3, child: _TableHeader('User')),
-                              Expanded(flex: 1, child: _TableHeader('Role')),
-                              SizedBox(width: 6),
-                              Expanded(flex: 2, child: _TableHeader('Status')),
-                              SizedBox(
-                                  width: 44, child: _TableHeader('Action')),
-                            ],
-                          ),
-                          const Divider(height: 16),
-                          ...List.generate(_users.length, (i) {
-                            final u = _users[i];
-                            return Column(
+              child: usersState.when(
+                data: (users) => SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Manage Users',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: theme.dividerColor),
+                        ),
+                        child: Column(
+                          children: [
+                            const Row(
                               children: [
-                                AdminUserRow(
-                                  userName: u['name'],
-                                  email: u['email'],
-                                  role: u['role'],
-                                  status: u['status'],
-                                  onToggleStatus: () => setState(() {
-                                    _users[i]['status'] =
-                                        _users[i]['status'] == 'active'
-                                            ? 'suspended'
-                                            : 'active';
-                                  }),
-                                  onDelete: () =>
-                                      setState(() => _users.removeAt(i)),
-                                ),
-                                if (i < _users.length - 1)
-                                  const Divider(
-                                      height: 1, color: AppColors.cardBorder),
+                                Expanded(flex: 3, child: _TableHeader('User')),
+                                Expanded(flex: 1, child: _TableHeader('Role')),
+                                SizedBox(width: 6),
+                                Expanded(flex: 2, child: _TableHeader('Status')),
+                                SizedBox(
+                                    width: 44, child: _TableHeader('Action')),
                               ],
-                            );
-                          }),
-                        ],
+                            ),
+                            const Divider(height: 16),
+                            if (users.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: Text('No users found.'),
+                              ),
+                            ...List.generate(users.length, (i) {
+                              final u = users[i];
+                              return Column(
+                                children: [
+                                  AdminUserRow(
+                                    userName: u.name,
+                                    email: u.email,
+                                    role: u.role,
+                                    status: u.status,
+                                    onToggleStatus: () => ref.read(authNotifierProvider.notifier).toggleUserStatus(u.id),
+                                    onDelete: () => _showDeleteUserDialog(context, ref, u.id),
+                                  ),
+                                  if (i < users.length - 1)
+                                    Divider(height: 1, color: theme.dividerColor),
+                                ],
+                              );
+                            }),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(child: Text('Error: $err')),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showDeleteUserDialog(BuildContext context, WidgetRef ref, String userId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: const Text('Delete User'),
+          content: const Text('Are you sure you want to delete this user?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                ref.read(authNotifierProvider.notifier).deleteUser(userId);
+                Navigator.pop(context);
+              },
+              child: Text(
+                  'Delete', style: TextStyle(color: theme.colorScheme.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 }
