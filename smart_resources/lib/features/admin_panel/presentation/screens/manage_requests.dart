@@ -131,7 +131,6 @@ class ManageRequests extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final requestsState = ref.watch(requestNotifierProvider);
-    final user = ref.watch(authNotifierProvider).user;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -196,9 +195,8 @@ class ManageRequests extends ConsumerWidget {
                                     courseCode: r.courseCode,
                                     requester: r.requestedBy,
                                     status: r.status,
-                                    // Admins can only edit their own requests
-                                    onEdit: (user?.name == r.requestedBy) 
-                                        ? () => context.go('/admin/requests/new', extra: r)
+                                    onFulfill: r.status == 'open'
+                                        ? () => ref.read(requestNotifierProvider.notifier).fulfillRequest(r.id)
                                         : null,
                                     onDelete: () => _showDeleteDialog(context, ref, r.id),
                                   ),

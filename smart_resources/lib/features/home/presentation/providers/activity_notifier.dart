@@ -17,11 +17,20 @@ class ActivityNotifier extends AsyncNotifier<List<Activity>> {
   Future<List<Activity>> _loadActivities() async {
     final user = ref.watch(authNotifierProvider).user;
     if (user == null) return [];
-    
+
     final repository = ref.watch(activityRepositoryProvider);
-    
-    // Updated: Both Admins and Students only see their own activities
-    return repository.getRecentActivities(userId: user.id);
+    final all = await repository.getRecentActivities(userId: user.id);
+
+    // Only show activities from the last 2 minutes
+    final cutoff = DateTime.now().subtract(const Duration(minutes: 2));
+    return all.where((a) {
+      try {
+        final time = DateTime.parse(a.time);
+        return time.isAfter(cutoff);
+      } catch (_) {
+        return false;
+      }
+    }).toList();
   }
 
   Future<void> refresh() async {

@@ -43,19 +43,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<User> signup(String name, String email, String password) async {
-    final existingLocal = await database.query(
-      'users',
-      where: 'email = ?',
-      whereArgs: [email],
-    );
-    if (existingLocal.isNotEmpty) {
-      throw AuthException('An account with this email already exists.');
-    }
-
-    final remoteUsers = await network.fetchUsers();
-    if (remoteUsers.any((u) => u.email.toLowerCase() == email.toLowerCase())) {
-      throw AuthException('An account with this email already exists.');
-    }
+    // Check duplicate only on the backend (source of truth)
+    // Skipping local SQLite check to avoid false positives from cached data
 
     final id = 'user-${DateTime.now().microsecondsSinceEpoch}';
     final user = UserModel(

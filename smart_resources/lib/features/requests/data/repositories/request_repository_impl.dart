@@ -54,6 +54,7 @@ class RequestRepositoryImpl implements RequestRepository {
       time: request.time,
       status: request.status,
     );
+    await network.updateRequest(model);
     await database.update(
       'requests',
       model.toMap(),
@@ -64,13 +65,16 @@ class RequestRepositoryImpl implements RequestRepository {
 
   @override
   Future<void> deleteRequest(String id) async {
+    await network.deleteRequest(id);
     await database.delete('requests', where: 'id = ?', whereArgs: [id]);
   }
 
   @override
   Future<void> fulfillRequest(String id) async {
+    // Update backend first
     final remote = await network.fulfillRequest(id);
     if (remote == null) return;
+    // Then sync local SQLite cache
     await database.update(
       'requests',
       remote.toMap(),
@@ -78,4 +82,6 @@ class RequestRepositoryImpl implements RequestRepository {
       whereArgs: [id],
     );
   }
+
+  
 }

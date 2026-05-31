@@ -45,6 +45,7 @@ final requestRepositoryProvider = Provider<RequestRepository>((ref) {
 final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
   return ActivityRepositoryImpl(
     database: ref.watch(appDatabaseProvider),
+    network: NetworkService.instance,
   );
 });
 

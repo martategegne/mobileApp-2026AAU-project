@@ -94,18 +94,21 @@ class ResourceRepositoryImpl implements ResourceRepository {
 
   @override
   Future<void> bookmarkResource(String userId, String resourceId, bool isBookmarked) async {
+    // Sync with backend
     if (isBookmarked) {
+      await network.addBookmark(userId, resourceId);
       await database.insert('bookmarks', {
         'user_id': userId,
         'resource_id': resourceId,
       });
     } else {
-      await database.delete('bookmarks', 
-        where: 'user_id = ? AND resource_id = ?', 
+      await network.removeBookmark(userId, resourceId);
+      await database.delete('bookmarks',
+        where: 'user_id = ? AND resource_id = ?',
         whereArgs: [userId, resourceId],
       );
     }
-    
+    // Update local resource bookmark flag
     final row = await database.query('resources', where: 'id = ?', whereArgs: [resourceId]);
     if (row.isNotEmpty) {
       final resource = ResourceModel.fromMap(row.first);
@@ -160,6 +163,9 @@ class ResourceRepositoryImpl implements ResourceRepository {
 
   @override
   Future<void> approveResource(String id) async {
+    // Approve on backend
+    await network.approveResource(id);
+    // Update local SQLite cache
     final rows = await database.query('resources', where: 'id = ?', whereArgs: [id]);
     if (rows.isEmpty) return;
     final resource = ResourceModel.fromMap(rows.first);
@@ -173,6 +179,9 @@ class ResourceRepositoryImpl implements ResourceRepository {
 
   @override
   Future<void> deleteResource(String id) async {
+    // Delete from backend (cascades bookmarks + reviews there too)
+    await network.deleteResource(id);
+    // Delete from local SQLite cache
     await database.delete('resources', where: 'id = ?', whereArgs: [id]);
     await database.delete('bookmarks', where: 'resource_id = ?', whereArgs: [id]);
     await database.delete('reviews', where: 'resource_id = ?', whereArgs: [id]);
@@ -189,6 +198,9 @@ class ResourceRepositoryImpl implements ResourceRepository {
       comment: review.comment,
       time: review.time,
     );
+    // Save to backend first
+    await network.addReview(model);
+    // Then save to local SQLite cache
     await database.insert('reviews', model.toMap());
 
     final rows = await database.query('resources', where: 'id = ?', whereArgs: [review.resourceId]);

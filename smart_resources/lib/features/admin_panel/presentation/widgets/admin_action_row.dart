@@ -100,7 +100,7 @@ class AdminRequestRow extends StatelessWidget {
   final String courseCode;
   final String requester;
   final String status; // 'open' or 'fulfilled'
-  final VoidCallback? onEdit;
+  final VoidCallback? onFulfill;
   final VoidCallback onDelete;
 
   const AdminRequestRow({
@@ -109,7 +109,7 @@ class AdminRequestRow extends StatelessWidget {
     required this.courseCode,
     required this.requester,
     required this.status,
-    this.onEdit,
+    this.onFulfill,
     required this.onDelete,
   });
 
@@ -141,33 +141,37 @@ class AdminRequestRow extends StatelessWidget {
           ),
           Expanded(
             flex: 2,
-            child: Row(
-              children: [
-                Icon(
-                  isFulfilled ? Icons.check_circle : Icons.cancel,
-                  color: isFulfilled ? Colors.green.shade600 : theme.colorScheme.error,
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isFulfilled ? 'Fulfilled' : 'Open',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isFulfilled ? Colors.green.shade600 : theme.colorScheme.error,
+            child: isFulfilled
+                ? Row(
+                    children: [
+                      Icon(Icons.check_circle,
+                          color: Colors.green.shade600, size: 14),
+                      const SizedBox(width: 4),
+                      Text('Fulfilled',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.green.shade600,
+                          )),
+                    ],
+                  )
+                : GestureDetector(
+                    onTap: onFulfill,
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline,
+                            color: Colors.orange.shade700, size: 14),
+                        const SizedBox(width: 4),
+                        Text('Fulfill',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange.shade700,
+                            )),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
           ),
-          if (onEdit != null) ...[
-            GestureDetector(
-              onTap: onEdit,
-              child: Icon(Icons.edit_outlined,
-                  color: theme.iconTheme.color, size: 20),
-            ),
-            const SizedBox(width: 8),
-          ],
           GestureDetector(
             onTap: onDelete,
             child: Icon(Icons.delete_outline,

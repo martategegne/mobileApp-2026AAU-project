@@ -1,107 +1,235 @@
-import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../features/auth/data/models/user_model.dart';
 import '../../features/requests/data/models/request_model.dart';
 import '../../features/resources/data/models/resource_model.dart';
+import '../../features/resources/data/models/review_model.dart';
+import '../../features/home/domain/entities/activity.dart';
 
 class NetworkService {
   NetworkService._();
   static final NetworkService instance = NetworkService._();
 
-  final List<UserModel> _users = [
-    const UserModel(
-      id: 'admin-1',
-      name: 'Admin User',
-      email: 'admin@studysphere.com',
-      password: 'admin123',
-      role: 'Admin',
-      status: 'active',
-    ),
-    const UserModel(
-      id: 'student-1',
-      name: 'Anatoli Chala',
-      email: 'student@studysphere.com',
-      password: 'student123',
-      role: 'User',
-      status: 'active',
-    ),
-  ];
+  static const String _base = 'http://192.168.8.150:3000';
 
-  // Removed default resources
-  final List<ResourceModel> _resources = [];
+  final _client = http.Client();
 
-  // Removed default requests
-  final List<RequestModel> _requests = [];
+  Map<String, String> get _h => {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
 
-  Future<List<UserModel>> fetchUsers() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return List<UserModel>.from(_users);
+  // Helpers
+
+  Future<dynamic> _get(String path) async {
+    final res = await _client
+        .get(Uri.parse('$_base$path'), headers: _h)
+        .timeout(const Duration(seconds: 10));
+    return _parse(res);
   }
 
+  Future<dynamic> _post(String path, Map<String, dynamic> body) async {
+    final res = await _client
+        .post(Uri.parse('$_base$path'), headers: _h, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 10));
+    return _parse(res);
+  }
+
+  Future<dynamic> _put(String path, Map<String, dynamic> body) async {
+    final res = await _client
+        .put(Uri.parse('$_base$path'), headers: _h, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 10));
+    return _parse(res);
+  }
+
+  Future<dynamic> _patch(String path) async {
+    final res = await _client
+        .patch(Uri.parse('$_base$path'), headers: _h)
+        .timeout(const Duration(seconds: 10));
+    return _parse(res);
+  }
+
+  Future<void> _delete(String path) async {
+    final res = await _client
+        .delete(Uri.parse('$_base$path'), headers: _h)
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode >= 400) {
+      final b = res.body.isNotEmpty ? jsonDecode(res.body) : {};
+      throw Exception(b['error'] ?? 'Request failed ${res.statusCode}');
+    }
+  }
+
+  dynamic _parse(http.Response res) {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (res.body.isEmpty) return null;
+      return jsonDecode(res.body);
+    }
+    final b = res.body.isNotEmpty ? jsonDecode(res.body) : {};
+    throw Exception(b['error'] ?? 'HTTP ${res.statusCode}');
+  }
+
+  // AUTH
+
   Future<UserModel?> authenticate(String email, String password) async {
-    await Future.delayed(const Duration(milliseconds: 400));
     try {
-      return _users.firstWhere((user) => user.email == email && user.password == password);
-    } catch (_) { return null; }
+      final data = await _post('/auth/login', {
+        'email': email,
+        'password': password,
+      });
+      return UserModel.fromMap(Map<String, Object?>.from(data as Map));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<UserModel> register(UserModel user) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    _users.add(user);
-    return user;
+    final data = await _post('/auth/register', user.toMap());
+    return UserModel.fromMap(Map<String, Object?>.from(data as Map));
+  }
+
+  // USERS
+
+  Future<List<UserModel>> fetchUsers() async {
+    final data = await _get('/users') as List;
+    return data
+        .map((u) => UserModel.fromMap(Map<String, Object?>.from(u as Map)))
+        .toList();
   }
 
   Future<void> updateUser(UserModel user) async {
-    final index = _users.indexWhere((u) => u.id == user.id);
-    if (index != -1) _users[index] = user;
+    await _put('/users/${user.id}', user.toMap());
   }
 
   Future<void> deleteUser(String id) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    _users.removeWhere((user) => user.id == id);
+    await _delete('/users/$id');
   }
 
+  // RESOURCES
+
   Future<List<ResourceModel>> fetchResources() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return List<ResourceModel>.from(_resources);
+    final data = await _get('/resources') as List;
+    return data
+        .map((r) => ResourceModel.fromMap(Map<String, Object?>.from(r as Map)))
+        .toList();
   }
 
   Future<ResourceModel?> fetchResourceById(String id) async {
-    await Future.delayed(const Duration(milliseconds: 400));
     try {
-      return _resources.firstWhere((r) => r.id == id);
-    } catch (_) { return ResourceModel.empty(id); }
+      final data = await _get('/resources/$id');
+      return ResourceModel.fromMap(Map<String, Object?>.from(data as Map));
+    } catch (_) {
+      return ResourceModel.empty(id);
+    }
   }
 
   Future<ResourceModel> uploadResource(ResourceModel resource) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _resources.add(resource);
-    return resource;
+    final data = await _post('/resources', resource.toMap());
+    return ResourceModel.fromMap(Map<String, Object?>.from(data as Map));
+  }
+
+  Future<void> updateResource(ResourceModel resource) async {
+    await _put('/resources/${resource.id}', resource.toMap());
+  }
+
+  Future<void> approveResource(String id) async {
+    await _patch('/resources/$id/approve');
   }
 
   Future<void> deleteResource(String id) async {
-    _resources.removeWhere((r) => r.id == id);
+    await _delete('/resources/$id');
   }
 
+  //  BOOKMARKS
+  // Uses user_id / resource_id to match Flutter bookmarks table
+
+  Future<List<ResourceModel>> fetchBookmarks(String userId) async {
+    final data = await _get('/bookmarks/$userId') as List;
+    return data
+        .map((r) => ResourceModel.fromMap(Map<String, Object?>.from(r as Map)))
+        .toList();
+  }
+
+  Future<void> addBookmark(String userId, String resourceId) async {
+    await _post('/bookmarks', {'user_id': userId, 'resource_id': resourceId});
+  }
+
+  Future<void> removeBookmark(String userId, String resourceId) async {
+    await _delete('/bookmarks/$userId/$resourceId');
+  }
+
+  //  REVIEWS
+
+  Future<List<ReviewModel>> fetchReviews(String resourceId) async {
+    final data = await _get('/reviews/$resourceId') as List;
+    return data
+        .map((r) => ReviewModel.fromMap(Map<String, Object?>.from(r as Map)))
+        .toList();
+  }
+
+  Future<ReviewModel> addReview(ReviewModel review) async {
+    final data = await _post('/reviews', review.toMap());
+    return ReviewModel.fromMap(Map<String, Object?>.from(data as Map));
+  }
+
+  //  REQUESTS
   Future<List<RequestModel>> fetchRequests() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return List<RequestModel>.from(_requests);
+    final data = await _get('/requests') as List;
+    return data
+        .map((r) => RequestModel.fromMap(Map<String, Object?>.from(r as Map)))
+        .toList();
   }
 
   Future<RequestModel> createRequest(RequestModel request) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _requests.add(request);
-    return request;
+    final data = await _post('/requests', request.toMap());
+    return RequestModel.fromMap(Map<String, Object?>.from(data as Map));
   }
 
-  Future<void> deleteRequest(String id) async {
-    _requests.removeWhere((r) => r.id == id);
+  Future<void> updateRequest(RequestModel request) async {
+    await _put('/requests/${request.id}', request.toMap());
   }
 
   Future<RequestModel?> fulfillRequest(String id) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    final index = _requests.indexWhere((r) => r.id == id);
-    if (index < 0) return null;
-    _requests[index] = _requests[index].copyWith(status: 'fulfilled');
-    return _requests[index];
+    try {
+      final data = await _patch('/requests/$id/fulfill');
+      return RequestModel.fromMap(Map<String, Object?>.from(data as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> deleteRequest(String id) async {
+    await _delete('/requests/$id');
+  }
+
+  // ACTIVITIES
+
+  Future<List<Activity>> fetchActivities({String? userId}) async {
+    final path = userId != null ? '/activities?userId=$userId' : '/activities';
+    final data = await _get(path) as List;
+    return data
+        .map(
+          (a) => Activity(
+            id: a['id'] ?? '',
+            userId: a['userId'] ?? '',
+            userName: a['userName'] ?? '',
+            type: a['type'] ?? '',
+            title: a['title'] ?? '',
+            time: a['time'] ?? '',
+            referenceId: a['referenceId'],
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> logActivity(Activity activity) async {
+    await _post('/activities', {
+      'id': activity.id,
+      'userId': activity.userId,
+      'userName': activity.userName,
+      'type': activity.type,
+      'title': activity.title,
+      'time': activity.time,
+      'referenceId': activity.referenceId,
+    });
   }
 }
