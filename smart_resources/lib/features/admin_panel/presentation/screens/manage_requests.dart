@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:smart_resources/features/requests/presentation/providers/request_notifier.dart';
-import '../widgets/admin_action_row.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:smart_resources/features/admin_panel/presentation/widgets/admin_action_row.dart';
+import 'package:smart_resources/core/theme/app_colors.dart';
 
 class _AdminHeader extends StatelessWidget {
   final String title;
@@ -26,8 +26,12 @@ class _AdminHeader extends StatelessWidget {
             ),
           if (onBack != null) const SizedBox(width: 12),
           Expanded(
-            child: Text(title,
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+            child: Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           Icon(Icons.notifications_outlined, color: theme.iconTheme.color),
           const SizedBox(width: 10),
@@ -37,8 +41,12 @@ class _AdminHeader extends StatelessWidget {
               color: theme.dividerColor.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text('Admin',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withOpacity(0.8))),
+            child: Text(
+              'Admin',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+              ),
+            ),
           ),
         ],
       ),
@@ -78,26 +86,34 @@ class _AdminTabBar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: isActive ? theme.colorScheme.primary.withOpacity(0.12) : Colors.transparent,
+                  color: isActive
+                      ? theme.colorScheme.primary.withOpacity(0.12)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icons[i],
-                        size: 14,
+                    Icon(
+                      icons[i],
+                      size: 14,
+                      color: isActive
+                          ? theme.colorScheme.primary
+                          : theme.textTheme.bodySmall?.color,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      tabs[i],
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isActive
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                         color: isActive
                             ? theme.colorScheme.primary
-                            : theme.textTheme.bodySmall?.color),
-                    const SizedBox(width: 4),
-                    Text(tabs[i],
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight:
-                                isActive ? FontWeight.w600 : FontWeight.w400,
-                            color: isActive
-                                ? theme.colorScheme.primary
-                                : theme.textTheme.bodySmall?.color)),
+                            : theme.textTheme.bodySmall?.color,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -116,11 +132,14 @@ class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Text(text,
-        style: theme.textTheme.bodySmall?.copyWith(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: theme.textTheme.bodySmall?.color?.withOpacity(0.75)));
+    return Text(
+      text,
+      style: theme.textTheme.bodySmall?.copyWith(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: theme.textTheme.bodySmall?.color?.withOpacity(0.75),
+      ),
+    );
   }
 }
 
@@ -138,13 +157,15 @@ class ManageRequests extends ConsumerWidget {
         child: Column(
           children: [
             _AdminHeader(
-                title: 'Admin Panel', onBack: () => context.go('/admin/home')),
+              title: 'Admin Panel',
+              onBack: () => context.go('/admin/home'),
+            ),
             _AdminTabBar(
               tabs: const ['Resources', 'Requests', 'Users'],
               icons: const [
                 Icons.menu_book_outlined,
                 Icons.search_outlined,
-                Icons.person_outline
+                Icons.person_outline,
               ],
               activeIndex: 1,
               onTap: (i) {
@@ -159,8 +180,12 @@ class ManageRequests extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Manage Requests',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        'Manage Requests',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -173,11 +198,22 @@ class ManageRequests extends ConsumerWidget {
                           children: [
                             const Row(
                               children: [
-                                Expanded(flex: 3, child: _TableHeader('Request')),
                                 Expanded(
-                                    flex: 2, child: _TableHeader('Requester')),
-                                Expanded(flex: 2, child: _TableHeader('Status')),
-                                SizedBox(width: 50, child: _TableHeader('Act.')),
+                                  flex: 3,
+                                  child: _TableHeader('Request'),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: _TableHeader('Requester'),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: _TableHeader('Status'),
+                                ),
+                                SizedBox(
+                                  width: 50,
+                                  child: _TableHeader('Act.'),
+                                ),
                               ],
                             ),
                             const Divider(height: 16),
@@ -196,12 +232,21 @@ class ManageRequests extends ConsumerWidget {
                                     requester: r.requestedBy,
                                     status: r.status,
                                     onFulfill: r.status == 'open'
-                                        ? () => ref.read(requestNotifierProvider.notifier).fulfillRequest(r.id)
+                                        ? () => ref
+                                              .read(
+                                                requestNotifierProvider
+                                                    .notifier,
+                                              )
+                                              .fulfillRequest(r.id)
                                         : null,
-                                    onDelete: () => _showDeleteDialog(context, ref, r.id),
+                                    onDelete: () =>
+                                        _showDeleteDialog(context, ref, r.id),
                                   ),
                                   if (i < requests.length - 1)
-                                    Divider(height: 1, color: theme.dividerColor),
+                                    Divider(
+                                      height: 1,
+                                      color: theme.dividerColor,
+                                    ),
                                 ],
                               );
                             }),
@@ -221,26 +266,38 @@ class ManageRequests extends ConsumerWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, WidgetRef ref, String requestId) {
+  void _showDeleteDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String requestId,
+  ) {
     showDialog(
       context: context,
       builder: (context) {
-          final theme = Theme.of(context);
-          return AlertDialog(
-            title: const Text('Delete Request'),
-            content: const Text('Are you sure you want to delete this request?'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              TextButton(
-                onPressed: () {
-                  ref.read(requestNotifierProvider.notifier).deleteRequest(requestId);
-                  Navigator.pop(context);
-                },
-                child: Text('Delete', style: TextStyle(color: theme.colorScheme.error)),
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: const Text('Delete Request'),
+          content: const Text('Are you sure you want to delete this request?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                ref
+                    .read(requestNotifierProvider.notifier)
+                    .deleteRequest(requestId);
+                Navigator.pop(context);
+              },
+              child: Text(
+                'Delete',
+                style: TextStyle(color: theme.colorScheme.error),
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,16 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../features/auth/data/models/user_model.dart';
-import '../../features/requests/data/models/request_model.dart';
-import '../../features/resources/data/models/resource_model.dart';
-import '../../features/resources/data/models/review_model.dart';
-import '../../features/home/domain/entities/activity.dart';
+import 'package:smart_resources/features/auth/data/models/user_model.dart';
+import 'package:smart_resources/features/requests/data/models/request_model.dart';
+import 'package:smart_resources/features/resources/data/models/resource_model.dart';
+import 'package:smart_resources/features/resources/data/models/review_model.dart';
+import 'package:smart_resources/features/home/domain/entities/activity.dart';
 
 class NetworkService {
   NetworkService._();
   static final NetworkService instance = NetworkService._();
 
-  static const String _base = 'http://192.168.8.150:3000';
+  static const String _base = 'http://192.168.43.36:3000';
 
   final _client = http.Client();
 

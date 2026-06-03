@@ -1,0 +1,127 @@
+#!/usr/bin/env groovy
+// Jenkinsfile for Flutter Testing Pipeline
+
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 1, unit: 'HOURS')
+        timestamps()
+    }
+
+    environment {
+        FLUTTER_HOME = '/opt/flutter'
+        PATH = "${FLUTTER_HOME}/bin:${PATH}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git log --oneline -1'
+            }
+        }
+
+        stage('Setup') {
+            steps {
+                script {
+                    echo 'Setting up Flutter environment...'
+                    sh 'flutter --version'
+                    sh 'flutter pub get'
+                }
+            }
+        }
+
+        stage('Analyze') {
+            steps {
+                script {
+                    echo 'Running code analysis...'
+                    sh 'flutter analyze'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                script {
+                    echo 'Running unit tests...'
+                    sh 'flutter test test/unit/ --coverage'
+                }
+            }
+        }
+
+        stage('Widget Tests') {
+            steps {
+                script {
+                    echo 'Running widget tests...'
+                    sh 'flutter test test/widget/ --coverage'
+                }
+            }
+        }
+
+        stage('Riverpod Tests') {
+            steps {
+                script {
+                    echo 'Running Riverpod tests...'
+                    sh 'flutter test test/riverpod/ --coverage'
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            steps {
+                script {
+                    echo 'Running integration tests...'
+                    sh 'flutter test integration_test/'
+                }
+            }
+        }
+
+        stage('Coverage Report') {
+            steps {
+                script {
+                    echo 'Generating coverage report...'
+                    sh 'flutter test --coverage'
+                    
+                    // Publish coverage
+                    publishHTML([
+                        reportDir: 'coverage',
+                        reportFiles: 'index.html',
+                        reportName: 'Code Coverage Report'
+                    ])
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Publish test results
+            junit 'test-results/**/*.xml'
+            
+            // Clean up
+            cleanWs(
+                deleteDirs: true,
+                patterns: [
+                    [pattern: 'build/', type: 'INCLUDE'],
+                    [pattern: '.dart_tool/', type: 'INCLUDE']
+                ]
+            )
+        }
+
+        success {
+            script {
+                echo 'All tests passed successfully!'
+                // Send success notification
+            }
+        }
+
+        failure {
+            script {
+                echo 'Tests failed!'
+                // Send failure notification
+            }
+        }
+    }
+}

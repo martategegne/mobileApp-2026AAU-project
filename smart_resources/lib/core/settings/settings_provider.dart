@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../features/auth/presentation/providers/auth_notifier.dart';
+import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
 
-final settingsProvider = NotifierProvider<SettingsNotifier, SettingsState>(SettingsNotifier.new);
+final settingsProvider = NotifierProvider<SettingsNotifier, SettingsState>(
+  SettingsNotifier.new,
+);
 
 class SettingsState {
   final bool isDarkMode;
@@ -48,7 +50,8 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final prefs = await SharedPreferences.getInstance();
     state = SettingsState(
       isDarkMode: prefs.getBool(_prefKey(_darkModeKey, userId)) ?? false,
-      notificationsEnabled: prefs.getBool(_prefKey(_notificationsKey, userId)) ?? true,
+      notificationsEnabled:
+          prefs.getBool(_prefKey(_notificationsKey, userId)) ?? true,
       fontSizeFactor: prefs.getDouble(_prefKey(_fontSizeKey, userId)) ?? 1.0,
     );
   }
