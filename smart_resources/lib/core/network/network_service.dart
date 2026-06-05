@@ -10,7 +10,7 @@ class NetworkService {
   NetworkService._();
   static final NetworkService instance = NetworkService._();
 
-  static const String _base = 'http://192.168.43.36:3000';
+  static const String _base = 'http://192.168.244.241:3000';
 
   final _client = http.Client();
 
