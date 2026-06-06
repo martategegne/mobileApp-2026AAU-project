@@ -6,17 +6,20 @@ import 'package:smart_resources/core/network/network_service.dart';
 
 class FakeDatabase extends Fake implements AppDatabase {
   @override
-  Future<List<Map<String, Object?>>> query(String table,
-      {String? where,
-      List<Object?>? whereArgs,
-      bool? distinct,
-      List<String>? columns,
-      String? groupBy,
-      String? having,
-      String? orderBy,
-      int? limit,
-      int? offset}) async =>
+  Future<List<Map<String, Object?>>> query(
+    String table, {
+    bool distinct = false,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
+    String? orderBy,
+    int? limit,
+    int? offset,
+  }) async =>
       [];
+
   @override
   Future<int> insert(String table, Map<String, Object?> values) async => 1;
 }

@@ -185,7 +185,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Email field
                   _ValidatedField(
-                    key: const Key('email_field'),
                     controller: _emailController,
                     hintText: 'Email address',
                     keyboardType: TextInputType.emailAddress,
@@ -198,7 +197,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Password field
                   _ValidatedField(
-                    key: const Key('password_field'),
                     controller: _passwordController,
                     hintText: 'Password',
                     obscureText: _obscurePassword,
@@ -223,7 +221,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   CustomButton(
-                    key: const Key('login_button'),
                     label: authState.isLoading ? 'Signing in...' : 'Sign In',
                     icon: const Icon(Icons.arrow_forward, size: 18),
                     onPressed: authState.isLoading ? null : _signIn,
@@ -248,7 +245,6 @@ class _ValidatedField extends StatelessWidget {
   final Widget? suffixIcon;
 
   const _ValidatedField({
-    super.key,
     required this.controller,
     required this.hintText,
     this.errorText,

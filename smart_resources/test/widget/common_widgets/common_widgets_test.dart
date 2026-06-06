@@ -29,11 +29,7 @@ class ErrorDisplay extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
 
-  const ErrorDisplay({
-    super.key,
-    required this.message,
-    this.onRetry,
-  });
+  const ErrorDisplay({super.key, required this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -42,16 +38,9 @@ class ErrorDisplay extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: theme.colorScheme.error,
-          ),
+          Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
           const SizedBox(height: 16),
-          Text(
-            'Error',
-            style: theme.textTheme.titleMedium,
-          ),
+          Text('Error', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -63,10 +52,7 @@ class ErrorDisplay extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onRetry,
-              child: const Text('Retry'),
-            ),
+            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ],
       ),
@@ -127,23 +113,22 @@ class CustomCard extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 4),
                 Text(
                   subtitle!,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.hintColor),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.hintColor,
+                  ),
                 ),
               ],
               if (description != null) ...[
                 const SizedBox(height: 8),
-                Text(
-                  description!,
-                  style: theme.textTheme.bodySmall,
-                ),
+                Text(description!, style: theme.textTheme.bodySmall),
               ],
             ],
           ),
@@ -207,11 +192,7 @@ void main() {
       WidgetTester tester,
     ) async {
       // Arrange
-      await tester.pumpWidget(
-        const TestApp(
-          child: LoadingIndicator(),
-        ),
-      );
+      await tester.pumpWidget(const TestApp(child: LoadingIndicator()));
 
       // Assert
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -225,9 +206,7 @@ void main() {
       const customMessage = 'Please wait...';
 
       await tester.pumpWidget(
-        const TestApp(
-          child: LoadingIndicator(message: customMessage),
-        ),
+        const TestApp(child: LoadingIndicator(message: customMessage)),
       );
 
       // Assert
@@ -242,11 +221,7 @@ void main() {
       const errorMessage = 'Something went wrong';
 
       await tester.pumpWidget(
-        TestApp(
-          child: ErrorDisplay(
-            message: errorMessage,
-          ),
-        ),
+        TestApp(child: ErrorDisplay(message: errorMessage)),
       );
 
       // Assert
@@ -283,11 +258,7 @@ void main() {
     ) async {
       // Arrange
       await tester.pumpWidget(
-        const TestApp(
-          child: ErrorDisplay(
-            message: 'An error occurred',
-          ),
-        ),
+        const TestApp(child: ErrorDisplay(message: 'An error occurred')),
       );
 
       // Assert
@@ -322,9 +293,7 @@ void main() {
       expect(clicked, isTrue);
     });
 
-    testWidgets('Custom button can be disabled', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Custom button can be disabled', (WidgetTester tester) async {
       // Arrange
       bool clicked = false;
 
@@ -357,10 +326,7 @@ void main() {
       await tester.pumpWidget(
         TestApp(
           child: Scaffold(
-            body: CustomCard(
-              title: 'Test Card',
-              subtitle: 'Subtitle',
-            ),
+            body: CustomCard(title: 'Test Card', subtitle: 'Subtitle'),
           ),
         ),
       );
@@ -371,9 +337,7 @@ void main() {
       expect(find.text('Subtitle'), findsOneWidget);
     });
 
-    testWidgets('Custom card with description', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Custom card with description', (WidgetTester tester) async {
       // Arrange
       await tester.pumpWidget(
         TestApp(
@@ -393,9 +357,7 @@ void main() {
       expect(find.text('Card Description'), findsOneWidget);
     });
 
-    testWidgets('Custom card is tappable', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Custom card is tappable', (WidgetTester tester) async {
       // Arrange
       bool cardTapped = false;
 
@@ -427,9 +389,7 @@ void main() {
       await tester.pumpWidget(
         TestApp(
           child: Scaffold(
-            body: RatingWidget(
-              onRatingChanged: (value) => rating = value,
-            ),
+            body: RatingWidget(onRatingChanged: (value) => rating = value),
           ),
         ),
       );
@@ -463,18 +423,14 @@ void main() {
       expect(find.byIcon(Icons.star), findsWidgets);
     });
 
-    testWidgets('Rating widget partial rating', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Rating widget partial rating', (WidgetTester tester) async {
       // Arrange
       int rating = 0;
 
       await tester.pumpWidget(
         TestApp(
           child: Scaffold(
-            body: RatingWidget(
-              onRatingChanged: (value) => rating = value,
-            ),
+            body: RatingWidget(onRatingChanged: (value) => rating = value),
           ),
         ),
       );
@@ -496,9 +452,7 @@ void main() {
       await tester.pumpWidget(
         TestApp(
           child: Scaffold(
-            body: RatingWidget(
-              onRatingChanged: (value) => rating = value,
-            ),
+            body: RatingWidget(onRatingChanged: (value) => rating = value),
           ),
         ),
       );
@@ -511,9 +465,7 @@ void main() {
       expect(rating, equals(2));
     });
 
-    testWidgets('Custom button multiple taps', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Custom button multiple taps', (WidgetTester tester) async {
       // Arrange
       int tapCount = 0;
 
@@ -547,9 +499,7 @@ void main() {
     ) async {
       // Arrange
       await tester.pumpWidget(
-        const TestApp(
-          child: LoadingIndicator(message: 'Loading content'),
-        ),
+        const TestApp(child: LoadingIndicator(message: 'Loading content')),
       );
 
       // Assert
@@ -557,14 +507,10 @@ void main() {
       expect(find.byType(Column), findsOneWidget);
     });
 
-    testWidgets('Error widget centers content', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Error widget centers content', (WidgetTester tester) async {
       // Arrange
       await tester.pumpWidget(
-        const TestApp(
-          child: ErrorDisplay(message: 'Error loading'),
-        ),
+        const TestApp(child: ErrorDisplay(message: 'Error loading')),
       );
 
       // Assert

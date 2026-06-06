@@ -6,7 +6,6 @@ import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
   AppDatabase._();
-  AppDatabase.test();
 
   static final AppDatabase instance = AppDatabase._();
 

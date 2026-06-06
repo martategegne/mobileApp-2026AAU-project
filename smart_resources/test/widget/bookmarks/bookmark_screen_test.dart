@@ -37,8 +37,9 @@ class BookmarkItem extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -50,16 +51,14 @@ class BookmarkItem extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'by $author',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.hintColor),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: onRemove,
-              ),
+              IconButton(icon: const Icon(Icons.close), onPressed: onRemove),
             ],
           ),
         ),
@@ -79,16 +78,9 @@ class BookmarksEmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.bookmark_outline,
-            size: 64,
-            color: theme.dividerColor,
-          ),
+          Icon(Icons.bookmark_outline, size: 64, color: theme.dividerColor),
           const SizedBox(height: 16),
-          Text(
-            'No bookmarks yet',
-            style: theme.textTheme.titleMedium,
-          ),
+          Text('No bookmarks yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
             'Save resources to access them later',
@@ -116,10 +108,7 @@ class BookmarksScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookmarks'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Bookmarks'), centerTitle: true),
       body: bookmarks.isEmpty
           ? const BookmarksEmptyState()
           : ListView.builder(
@@ -180,10 +169,7 @@ void main() {
       // Arrange
       await tester.pumpWidget(
         TestApp(
-          child: BookmarksScreen(
-            bookmarks: const [],
-            onRemoveBookmark: (_) {},
-          ),
+          child: BookmarksScreen(bookmarks: const [], onRemoveBookmark: (_) {}),
         ),
       );
 
@@ -325,16 +311,11 @@ void main() {
       expect(find.text('Advanced Flutter'), findsOneWidget);
     });
 
-    testWidgets('Bookmarks screen has AppBar', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Bookmarks screen has AppBar', (WidgetTester tester) async {
       // Arrange
       await tester.pumpWidget(
         TestApp(
-          child: BookmarksScreen(
-            bookmarks: const [],
-            onRemoveBookmark: (_) {},
-          ),
+          child: BookmarksScreen(bookmarks: const [], onRemoveBookmark: (_) {}),
         ),
       );
 
@@ -378,21 +359,9 @@ void main() {
     ) async {
       // Arrange
       final bookmarks = [
-        {
-          'title': 'First',
-          'description': 'Desc 1',
-          'author': 'Author1',
-        },
-        {
-          'title': 'Second',
-          'description': 'Desc 2',
-          'author': 'Author2',
-        },
-        {
-          'title': 'Third',
-          'description': 'Desc 3',
-          'author': 'Author3',
-        },
+        {'title': 'First', 'description': 'Desc 1', 'author': 'Author1'},
+        {'title': 'Second', 'description': 'Desc 2', 'author': 'Author2'},
+        {'title': 'Third', 'description': 'Desc 3', 'author': 'Author3'},
       ];
 
       int removedIndex = -1;
@@ -414,16 +383,10 @@ void main() {
       expect(removedIndex, equals(1));
     });
 
-    testWidgets('Empty state shows correct icon', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Empty state shows correct icon', (WidgetTester tester) async {
       // Arrange
       await tester.pumpWidget(
-        TestApp(
-          child: Scaffold(
-            body: const BookmarksEmptyState(),
-          ),
-        ),
+        TestApp(child: Scaffold(body: const BookmarksEmptyState())),
       );
 
       // Assert
@@ -435,11 +398,7 @@ void main() {
     ) async {
       // Arrange
       await tester.pumpWidget(
-        TestApp(
-          child: Scaffold(
-            body: const BookmarksEmptyState(),
-          ),
-        ),
+        TestApp(child: Scaffold(body: const BookmarksEmptyState())),
       );
 
       // Assert
@@ -526,9 +485,7 @@ void main() {
       expect(find.text(longDescription), findsOneWidget);
     });
 
-    testWidgets('Bookmark author text is visible', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('Bookmark author text is visible', (WidgetTester tester) async {
       // Arrange
       const authorName = 'John Developer';
 

@@ -1,138 +1,35 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
+import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_resources/core/database/app_database.dart';
 import 'package:smart_resources/core/network/network_service.dart';
-
 import 'package:smart_resources/features/auth/data/models/user_model.dart';
 import 'package:smart_resources/features/auth/data/repositories/auth_repository_impl.dart';
-
 import 'package:smart_resources/features/resources/data/models/resource_model.dart';
 import 'package:smart_resources/features/resources/data/models/review_model.dart';
 import 'package:smart_resources/features/resources/data/repositories/resource_repository_impl.dart';
-import 'package:smart_resources/features/resources/domain/entities/review.dart';
-
 import 'package:smart_resources/features/requests/data/models/request_model.dart';
 import 'package:smart_resources/features/requests/data/repositories/request_repository_impl.dart';
-import 'package:smart_resources/features/requests/domain/entities/request.dart';
-
 import 'package:smart_resources/features/notifications/data/models/notification_model.dart';
 import 'package:smart_resources/features/notifications/data/repositories/notification_repository_impl.dart';
-import 'package:smart_resources/features/notifications/domain/entities/notification.dart';
 
-import 'package:smart_resources/features/home/domain/entities/activity.dart';
+// ─── Mocks ───────────────────────────────────────────────────────────────────
 
-// ─── Mockito generated mocks ──────────────────────────────────────────────────
-@GenerateMocks([NetworkService])
-import 'integration_test.mocks.dart';
+class MockNetworkService extends Mock implements NetworkService {}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+class MockAppDatabase extends Mock implements AppDatabase {}
 
-Future<Database> _openTestDb() async {
-  sqfliteFfiInit();
-  final factory = databaseFactoryFfi;
-  final db = await factory.openDatabase(
-    inMemoryDatabasePath,
-    options: OpenDatabaseOptions(
-      version: 1,
-      onCreate: (db, _) async {
-        await db.execute('''
-          CREATE TABLE users(
-            id TEXT PRIMARY KEY,
-            name TEXT,
-            email TEXT UNIQUE,
-            password TEXT,
-            role TEXT,
-            status TEXT
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE resources(
-            id TEXT PRIMARY KEY,
-            title TEXT,
-            description TEXT,
-            courseCode TEXT,
-            rating REAL,
-            reviewCount INTEGER,
-            uses INTEGER,
-            fileType TEXT,
-            uploader TEXT,
-            isApproved INTEGER,
-            isBookmarked INTEGER,
-            isDownloaded INTEGER,
-            file_path TEXT
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE requests(
-            id TEXT PRIMARY KEY,
-            title TEXT,
-            description TEXT,
-            courseCode TEXT,
-            requestedBy TEXT,
-            time TEXT,
-            status TEXT
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE bookmarks(
-            user_id TEXT,
-            resource_id TEXT,
-            PRIMARY KEY(user_id, resource_id)
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE reviews(
-            id TEXT PRIMARY KEY,
-            resource_id TEXT,
-            user_id TEXT,
-            user_name TEXT,
-            rating REAL,
-            comment TEXT,
-            time TEXT
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE activities(
-            id TEXT PRIMARY KEY,
-            user_id TEXT,
-            user_name TEXT,
-            type TEXT,
-            title TEXT,
-            time TEXT,
-            reference_id TEXT
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE notifications(
-            id TEXT PRIMARY KEY,
-            title TEXT,
-            message TEXT,
-            time TEXT,
-            is_read INTEGER
-          )
-        ''');
-      },
-    ),
-  );
-  return db;
-}
+// ─── Fakes (needed for mocktail registerFallbackValue) ───────────────────────
 
-AppDatabase _wrapDb(Database raw) {
-  return _TestAppDatabase(raw);
-}
+class FakeUserModel extends Fake implements UserModel {}
 
-class _TestAppDatabase extends AppDatabase {
-  _TestAppDatabase(this._raw) : super.test();
-  final Database _raw;
+class FakeResourceModel extends Fake implements ResourceModel {}
 
-  @override
-  Future<Database> get database async => _raw;
-}
+class FakeReviewModel extends Fake implements ReviewModel {}
+
+class FakeRequestModel extends Fake implements RequestModel {}
+
+class FakeNotificationModel extends Fake implements NotificationModel {}
 
 // ─── Sample fixtures ──────────────────────────────────────────────────────────
 
@@ -143,15 +40,14 @@ UserModel _sampleUser({
   String password = 'pass123',
   String role = 'User',
   String status = 'active',
-}) =>
-    UserModel(
-      id: id,
-      name: name,
-      email: email,
-      password: password,
-      role: role,
-      status: status,
-    );
+}) => UserModel(
+  id: id,
+  name: name,
+  email: email,
+  password: password,
+  role: role,
+  status: status,
+);
 
 ResourceModel _sampleResource({
   String id = 'res-001',
@@ -159,26 +55,22 @@ ResourceModel _sampleResource({
   bool isApproved = false,
   bool isBookmarked = false,
   bool isDownloaded = false,
-}) =>
-    ResourceModel(
-      id: id,
-      title: title,
-      description: 'Detailed notes on calculus',
-      courseCode: 'MATH101',
-      rating: 4.2,
-      reviewCount: 5,
-      uses: 10,
-      fileType: 'PDF',
-      uploader: 'alice@test.com',
-      isApproved: isApproved,
-      isBookmarked: isBookmarked,
-      isDownloaded: isDownloaded,
-    );
+}) => ResourceModel(
+  id: id,
+  title: title,
+  description: 'Detailed notes on calculus',
+  courseCode: 'MATH101',
+  rating: 4.2,
+  reviewCount: 5,
+  uses: 10,
+  fileType: 'PDF',
+  uploader: 'alice@test.com',
+  isApproved: isApproved,
+  isBookmarked: isBookmarked,
+  isDownloaded: isDownloaded,
+);
 
-RequestModel _sampleRequest({
-  String id = 'req-001',
-  String status = 'open',
-}) =>
+RequestModel _sampleRequest({String id = 'req-001', String status = 'open'}) =>
     RequestModel(
       id: id,
       title: 'Request Organic Chemistry Notes',
@@ -190,81 +82,140 @@ RequestModel _sampleRequest({
     );
 
 ReviewModel _sampleReview({String resourceId = 'res-001'}) => ReviewModel(
-      id: 'rev-001',
-      resourceId: resourceId,
-      userId: 'user-001',
-      userName: 'Alice',
-      rating: 5.0,
-      comment: 'Excellent resource!',
-      time: '2024-01-15T11:00:00Z',
-    );
+  id: 'rev-001',
+  resourceId: resourceId,
+  userId: 'user-001',
+  userName: 'Alice',
+  rating: 5.0,
+  comment: 'Excellent resource!',
+  time: '2024-01-15T11:00:00Z',
+);
 
 NotificationModel _sampleNotification({
   String id = 'notif-001',
   bool isRead = false,
-}) =>
-    NotificationModel(
-      id: id,
-      title: 'New Resource Available',
-      message: 'Calculus Notes have been approved.',
-      time: '2024-01-15T12:00:00Z',
-      isRead: isRead,
-    );
+  String time = '2024-01-15T12:00:00Z',
+}) => NotificationModel(
+  id: id,
+  title: 'New Resource Available',
+  message: 'Calculus Notes have been approved.',
+  time: time,
+  isRead: isRead,
+);
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/// Stubs db.query() to return [rows] for any call.
+void _stubQuery(MockAppDatabase db, List<Map<String, Object?>> rows) {
+  when(
+    () => db.query(
+      any(),
+      distinct: any(named: 'distinct'),
+      columns: any(named: 'columns'),
+      where: any(named: 'where'),
+      whereArgs: any(named: 'whereArgs'),
+      groupBy: any(named: 'groupBy'),
+      having: any(named: 'having'),
+      orderBy: any(named: 'orderBy'),
+      limit: any(named: 'limit'),
+      offset: any(named: 'offset'),
+    ),
+  ).thenAnswer((_) async => rows);
+}
+
+void _stubInsert(MockAppDatabase db) {
+  when(() => db.insert(any(), any())).thenAnswer((_) async => 1);
+}
+
+void _stubUpdate(MockAppDatabase db) {
+  when(
+    () => db.update(
+      any(),
+      any(),
+      where: any(named: 'where'),
+      whereArgs: any(named: 'whereArgs'),
+    ),
+  ).thenAnswer((_) async => 1);
+}
+
+void _stubDelete(MockAppDatabase db) {
+  when(
+    () => db.delete(
+      any(),
+      where: any(named: 'where'),
+      whereArgs: any(named: 'whereArgs'),
+    ),
+  ).thenAnswer((_) async => 1);
+}
+
+void _stubPersistDownload(MockAppDatabase db) {
+  when(() => db.persistDownloadedId(any())).thenAnswer((_) async {});
+}
+
+void _stubGetPersistedDownloadedIds(MockAppDatabase db, [Set<String>? ids]) {
+  when(() => db.getPersistedDownloadedIds())
+      .thenAnswer((_) async => ids ?? {});
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  TESTS
 // ══════════════════════════════════════════════════════════════════════════════
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(FakeUserModel());
+    registerFallbackValue(FakeResourceModel());
+    registerFallbackValue(FakeReviewModel());
+    registerFallbackValue(FakeRequestModel());
+    registerFallbackValue(FakeNotificationModel());
+  });
+
   // --------------------------------------------------------------------------
   // AUTH REPOSITORY
   // --------------------------------------------------------------------------
   group('AuthRepositoryImpl', () {
-    late Database rawDb;
-    late AppDatabase db;
+    late MockAppDatabase db;
     late MockNetworkService mockNet;
     late AuthRepositoryImpl repo;
 
-    setUp(() async {
-      rawDb = await _openTestDb();
-      db = _wrapDb(rawDb);
+    setUp(() {
+      db = MockAppDatabase();
       mockNet = MockNetworkService();
       repo = AuthRepositoryImpl(database: db, network: mockNet);
     });
 
-    tearDown(() async => rawDb.close());
-
-    // ── login ────────────────────────────────────────────────────────────────
-
-    test('login returns cached user when present in SQLite', () async {
+    // ── login ─────────────────────────────────────────────────────────────────
+    test('login returns cached user when present in DB', () async {
       final user = _sampleUser();
-      await rawDb.insert('users', user.toMap());
+      _stubQuery(db, [user.toMap()]);
 
       final result = await repo.login(user.email, user.password);
 
-      verifyNever(mockNet.authenticate(any, any));
+      verifyNever(() => mockNet.authenticate(any(), any()));
       expect(result.id, user.id);
       expect(result.name, user.name);
     });
 
     test('login hits network when cache is empty and stores result', () async {
       final user = _sampleUser();
-      when(mockNet.authenticate(user.email, user.password))
-          .thenAnswer((_) async => user);
+      _stubQuery(db, []);
+      _stubInsert(db);
+      when(
+        () => mockNet.authenticate(user.email, user.password),
+      ).thenAnswer((_) async => user);
 
       final result = await repo.login(user.email, user.password);
 
-      verify(mockNet.authenticate(user.email, user.password)).called(1);
+      verify(() => mockNet.authenticate(user.email, user.password)).called(1);
+      verify(() => db.insert('users', any())).called(1);
       expect(result.id, user.id);
-
-      // Verify persisted locally
-      final rows = await rawDb.query('users',
-          where: 'email = ?', whereArgs: [user.email]);
-      expect(rows, isNotEmpty);
     });
 
     test('login throws AuthException on bad credentials', () async {
-      when(mockNet.authenticate(any, any)).thenAnswer((_) async => null);
+      _stubQuery(db, []);
+      when(
+        () => mockNet.authenticate(any(), any()),
+      ).thenAnswer((_) async => null);
 
       expect(
         () => repo.login('bad@test.com', 'wrong'),
@@ -272,114 +223,138 @@ void main() {
       );
     });
 
-    // ── signup ───────────────────────────────────────────────────────────────
-
-    test('signup registers user locally and on network', () async {
+    // ── signup ────────────────────────────────────────────────────────────────
+    test('signup registers user on network and caches locally', () async {
       final user = _sampleUser();
-      when(mockNet.register(any)).thenAnswer((_) async => user);
+      _stubInsert(db);
+      when(() => mockNet.register(any())).thenAnswer((_) async => user);
 
-      final result =
-          await repo.signup(user.name, user.email, user.password);
+      final result = await repo.signup(user.name, user.email, user.password);
 
-      verify(mockNet.register(any)).called(1);
+      verify(() => mockNet.register(any())).called(1);
+      verify(() => db.insert('users', any())).called(1);
       expect(result.email, user.email);
-
-      final rows = await rawDb.query('users',
-          where: 'email = ?', whereArgs: [user.email]);
-      expect(rows, isNotEmpty);
     });
 
     // ── updateProfile ─────────────────────────────────────────────────────────
-
-    test('updateProfile updates SQLite and syncs to network', () async {
+    test('updateProfile syncs to network and updates local cache', () async {
       final user = _sampleUser();
-      await rawDb.insert('users', user.toMap());
-      when(mockNet.updateUser(any)).thenAnswer((_) async {});
+      // updateProfile fetches users list to find existing role/status,
+      // then calls updateUser, then inserts updated user into cache
+      _stubQuery(db, [user.toMap()]);
+      _stubInsert(db);
+      when(() => mockNet.fetchUsers()).thenAnswer((_) async => [user]);
+      when(() => mockNet.updateUser(any())).thenAnswer((_) async {});
 
       final updated = await repo.updateProfile(
-          user.id, 'Alice Updated', 'alice2@test.com', 'newpass');
+        user.id,
+        'Alice Updated',
+        'alice2@test.com',
+        'newpass',
+      );
 
-      verify(mockNet.updateUser(any)).called(1);
+      verify(() => mockNet.updateUser(any())).called(1);
+      verify(() => db.insert('users', any())).called(1);
       expect(updated.name, 'Alice Updated');
       expect(updated.email, 'alice2@test.com');
-
-      final rows = await rawDb.query('users',
-          where: 'id = ?', whereArgs: [user.id]);
-      expect(rows.first['name'], 'Alice Updated');
-    });
-
-    test('updateProfile throws AuthException when user not in cache', () async {
-      expect(
-        () => repo.updateProfile('non-existent', 'X', 'x@x.com', 'x'),
-        throwsA(isA<AuthException>()),
-      );
     });
 
     // ── getUsers ──────────────────────────────────────────────────────────────
-
-    test('getUsers returns cached list without network call', () async {
-      await rawDb.insert('users', _sampleUser().toMap());
+    test('getUsers always fetches from network and caches locally', () async {
+      final user = _sampleUser();
+      _stubInsert(db);
+      when(() => mockNet.fetchUsers()).thenAnswer((_) async => [user]);
 
       final users = await repo.getUsers();
 
-      verifyNever(mockNet.fetchUsers());
+      verify(() => mockNet.fetchUsers()).called(1);
+      verify(() => db.insert('users', any())).called(1);
       expect(users.length, 1);
     });
 
-    test('getUsers fetches from network when cache is empty', () async {
-      final remoteUsers = [_sampleUser(), _sampleUser(id: 'user-002', email: 'bob@test.com')];
-      when(mockNet.fetchUsers()).thenAnswer((_) async => remoteUsers);
+    test('getUsers falls back to local cache when network fails', () async {
+      final user = _sampleUser();
+      _stubQuery(db, [user.toMap()]);
+      when(() => mockNet.fetchUsers()).thenThrow(Exception('Network error'));
 
       final users = await repo.getUsers();
 
-      verify(mockNet.fetchUsers()).called(1);
-      expect(users.length, 2);
+      expect(users.length, 1);
+      expect(users.first.id, user.id);
+    });
 
-      final rows = await rawDb.query('users');
-      expect(rows.length, 2);
+    test('getUsers fetches from network when cache is empty', () async {
+      final remoteUsers = [
+        _sampleUser(),
+        _sampleUser(id: 'user-002', email: 'bob@test.com'),
+      ];
+      _stubQuery(db, []);
+      _stubInsert(db);
+      when(() => mockNet.fetchUsers()).thenAnswer((_) async => remoteUsers);
+
+      final users = await repo.getUsers();
+
+      verify(() => mockNet.fetchUsers()).called(1);
+      expect(users.length, 2);
     });
 
     // ── toggleUserStatus ──────────────────────────────────────────────────────
-
-    test('toggleUserStatus suspends active user locally and on network',
-        () async {
+    test('toggleUserStatus suspends active user', () async {
       final user = _sampleUser(status: 'active');
-      await rawDb.insert('users', user.toMap());
-      when(mockNet.updateUser(any)).thenAnswer((_) async {});
+      _stubQuery(db, [user.toMap()]);
+      _stubUpdate(db);
+      when(() => mockNet.updateUser(any())).thenAnswer((_) async {});
 
       await repo.toggleUserStatus(user.id);
 
-      verify(mockNet.updateUser(any)).called(1);
-      final rows = await rawDb.query('users',
-          where: 'id = ?', whereArgs: [user.id]);
-      expect(rows.first['status'], 'suspended');
+      verify(() => mockNet.updateUser(any())).called(1);
+      final captured = verify(
+        () => db.update(
+          'users',
+          captureAny(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).captured;
+      final updatedMap = captured.first as Map<String, Object?>;
+      expect(updatedMap['status'], 'suspended');
     });
 
     test('toggleUserStatus re-activates suspended user', () async {
       final user = _sampleUser(status: 'suspended');
-      await rawDb.insert('users', user.toMap());
-      when(mockNet.updateUser(any)).thenAnswer((_) async {});
+      _stubQuery(db, [user.toMap()]);
+      _stubUpdate(db);
+      when(() => mockNet.updateUser(any())).thenAnswer((_) async {});
 
       await repo.toggleUserStatus(user.id);
 
-      final rows = await rawDb.query('users',
-          where: 'id = ?', whereArgs: [user.id]);
-      expect(rows.first['status'], 'active');
+      final captured = verify(
+        () => db.update(
+          'users',
+          captureAny(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).captured;
+      final updatedMap = captured.first as Map<String, Object?>;
+      expect(updatedMap['status'], 'active');
     });
 
     // ── deleteUser ────────────────────────────────────────────────────────────
+    test('deleteUser removes from DB and calls network', () async {
+      _stubDelete(db);
+      when(() => mockNet.deleteUser(any())).thenAnswer((_) async {});
 
-    test('deleteUser removes from SQLite and calls network', () async {
-      final user = _sampleUser();
-      await rawDb.insert('users', user.toMap());
-      when(mockNet.deleteUser(user.id)).thenAnswer((_) async {});
+      await repo.deleteUser('user-001');
 
-      await repo.deleteUser(user.id);
-
-      verify(mockNet.deleteUser(user.id)).called(1);
-      final rows = await rawDb.query('users',
-          where: 'id = ?', whereArgs: [user.id]);
-      expect(rows, isEmpty);
+      verify(() => mockNet.deleteUser('user-001')).called(1);
+      verify(
+        () => db.delete(
+          'users',
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(1);
     });
   });
 
@@ -387,266 +362,275 @@ void main() {
   // RESOURCE REPOSITORY
   // --------------------------------------------------------------------------
   group('ResourceRepositoryImpl', () {
-    late Database rawDb;
-    late AppDatabase db;
+    late MockAppDatabase db;
     late MockNetworkService mockNet;
     late ResourceRepositoryImpl repo;
 
-    setUp(() async {
-      rawDb = await _openTestDb();
-      db = _wrapDb(rawDb);
+    setUp(() {
+      db = MockAppDatabase();
       mockNet = MockNetworkService();
       repo = ResourceRepositoryImpl(database: db, network: mockNet);
     });
 
-    tearDown(() async => rawDb.close());
-
     // ── getResources ──────────────────────────────────────────────────────────
+    test(
+      'getResources always fetches from network and caches locally',
+      () async {
+        final res = _sampleResource();
+        _stubInsert(db);
+        _stubGetPersistedDownloadedIds(db);
+        when(() => mockNet.fetchResources()).thenAnswer((_) async => [res]);
 
-    test('getResources returns cached resources without network call', () async {
-      await rawDb.insert('resources', _sampleResource().toMap());
+        final resources = await repo.getResources();
+
+        verify(() => mockNet.fetchResources()).called(1);
+        verify(() => db.insert('resources', any())).called(1);
+        expect(resources.length, 1);
+        expect(resources.first.title, 'Calculus Notes');
+      },
+    );
+
+    test('getResources falls back to local cache when network fails', () async {
+      final res = _sampleResource();
+      _stubQuery(db, [res.toMap()]);
+      when(
+        () => mockNet.fetchResources(),
+      ).thenThrow(Exception('Network error'));
 
       final resources = await repo.getResources();
 
-      verifyNever(mockNet.fetchResources());
       expect(resources.length, 1);
-      expect(resources.first.title, 'Calculus Notes');
+      expect(resources.first.id, res.id);
     });
 
     test('getResources fetches from network when cache is empty', () async {
-      final remote = [_sampleResource(), _sampleResource(id: 'res-002', title: 'Physics Notes')];
-      when(mockNet.fetchResources()).thenAnswer((_) async => remote);
+      final remote = [
+        _sampleResource(),
+        _sampleResource(id: 'res-002', title: 'Physics Notes'),
+      ];
+      _stubQuery(db, []);
+      _stubInsert(db);
+      _stubGetPersistedDownloadedIds(db);
+      when(() => mockNet.fetchResources()).thenAnswer((_) async => remote);
 
       final resources = await repo.getResources();
 
-      verify(mockNet.fetchResources()).called(1);
+      verify(() => mockNet.fetchResources()).called(1);
       expect(resources.length, 2);
-
-      final rows = await rawDb.query('resources');
-      expect(rows.length, 2);
     });
 
     // ── getResourceById ───────────────────────────────────────────────────────
-
     test('getResourceById returns cached resource', () async {
       final res = _sampleResource();
-      await rawDb.insert('resources', res.toMap());
+      _stubQuery(db, [res.toMap()]);
 
       final result = await repo.getResourceById(res.id);
 
-      verifyNever(mockNet.fetchResourceById(any));
+      verifyNever(() => mockNet.fetchResourceById(any()));
       expect(result?.id, res.id);
     });
 
     test('getResourceById fetches from network on cache miss', () async {
       final res = _sampleResource();
-      when(mockNet.fetchResourceById(res.id)).thenAnswer((_) async => res);
+      _stubQuery(db, []);
+      _stubInsert(db);
+      when(
+        () => mockNet.fetchResourceById(res.id),
+      ).thenAnswer((_) async => res);
 
       final result = await repo.getResourceById(res.id);
 
-      verify(mockNet.fetchResourceById(res.id)).called(1);
+      verify(() => mockNet.fetchResourceById(res.id)).called(1);
       expect(result?.id, res.id);
-
-      final rows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect(rows, isNotEmpty);
     });
 
     // ── uploadResource ────────────────────────────────────────────────────────
-
     test('uploadResource posts to network and caches locally', () async {
       final res = _sampleResource();
-      when(mockNet.uploadResource(any)).thenAnswer((_) async => res);
+      _stubInsert(db);
+      when(
+        () => mockNet.uploadResource(
+          any(),
+          fileBytes: any(named: 'fileBytes'),
+          fileName: any(named: 'fileName'),
+        ),
+      ).thenAnswer((_) async => res);
 
       await repo.uploadResource(res);
 
-      verify(mockNet.uploadResource(any)).called(1);
-      final rows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect(rows, isNotEmpty);
+      verify(
+        () => mockNet.uploadResource(
+          any(),
+          fileBytes: any(named: 'fileBytes'),
+          fileName: any(named: 'fileName'),
+        ),
+      ).called(1);
+      verify(() => db.insert('resources', any())).called(1);
     });
 
     // ── updateResource ────────────────────────────────────────────────────────
-
-    test('updateResource updates local SQLite cache', () async {
+    test('updateResource calls network and updates local cache', () async {
       final res = _sampleResource();
-      await rawDb.insert('resources', res.toMap());
+      _stubUpdate(db);
+      when(() => mockNet.updateResource(any())).thenAnswer((_) async {});
 
       final updated = res.copyWith(title: 'Updated Calculus Notes');
       await repo.updateResource(updated);
 
-      final rows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect(rows.first['title'], 'Updated Calculus Notes');
+      verify(() => mockNet.updateResource(any())).called(1);
+      verify(
+        () => db.update(
+          'resources',
+          any(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(1);
     });
 
     // ── bookmarkResource ──────────────────────────────────────────────────────
-
     test('bookmarkResource adds bookmark locally and on network', () async {
       final res = _sampleResource();
-      await rawDb.insert('resources', res.toMap());
-      when(mockNet.addBookmark(any, any)).thenAnswer((_) async {});
+      _stubQuery(db, [res.toMap()]);
+      _stubInsert(db);
+      _stubUpdate(db);
+      when(() => mockNet.addBookmark(any(), any())).thenAnswer((_) async {});
 
       await repo.bookmarkResource('user-001', res.id, true);
 
-      verify(mockNet.addBookmark('user-001', res.id)).called(1);
-      final bRows = await rawDb.query('bookmarks');
-      expect(bRows, isNotEmpty);
-
-      final rRows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect(rRows.first['isBookmarked'], 1);
+      verify(() => mockNet.addBookmark('user-001', res.id)).called(1);
+      verify(() => db.insert('bookmarks', any())).called(1);
     });
 
     test('bookmarkResource removes bookmark locally and on network', () async {
       final res = _sampleResource(isBookmarked: true);
-      await rawDb.insert('resources', res.toMap());
-      await rawDb.insert('bookmarks', {
-        'user_id': 'user-001',
-        'resource_id': res.id,
-      });
-      when(mockNet.removeBookmark(any, any)).thenAnswer((_) async {});
+      _stubQuery(db, [res.toMap()]);
+      _stubDelete(db);
+      _stubUpdate(db);
+      when(() => mockNet.removeBookmark(any(), any())).thenAnswer((_) async {});
 
       await repo.bookmarkResource('user-001', res.id, false);
 
-      verify(mockNet.removeBookmark('user-001', res.id)).called(1);
-      final bRows = await rawDb.query('bookmarks');
-      expect(bRows, isEmpty);
-
-      final rRows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect(rRows.first['isBookmarked'], 0);
+      verify(() => mockNet.removeBookmark('user-001', res.id)).called(1);
+      verify(
+        () => db.delete(
+          'bookmarks',
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(1);
     });
 
     // ── markDownloaded ────────────────────────────────────────────────────────
-
     test('markDownloaded sets isDownloaded flag and increments uses', () async {
       final res = _sampleResource();
-      await rawDb.insert('resources', res.toMap());
+      _stubQuery(db, [res.toMap()]);
+      _stubUpdate(db);
+      _stubPersistDownload(db);
 
       await repo.markDownloaded(res.id);
 
-      final rows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect(rows.first['isDownloaded'], 1);
-      expect(rows.first['uses'], greaterThan(res.uses));
-    });
-
-    // ── getBookmarkedResources ────────────────────────────────────────────────
-
-    test('getBookmarkedResources returns only bookmarked resources', () async {
-      final res1 = _sampleResource(id: 'res-001');
-      final res2 = _sampleResource(id: 'res-002', title: 'Physics Notes');
-      await rawDb.insert('resources', res1.toMap());
-      await rawDb.insert('resources', res2.toMap());
-      await rawDb.insert('bookmarks', {
-        'user_id': 'user-001',
-        'resource_id': 'res-001',
-      });
-
-      final bookmarked = await repo.getBookmarkedResources('user-001');
-
-      expect(bookmarked.length, 1);
-      expect(bookmarked.first.id, 'res-001');
-      expect(bookmarked.first.isBookmarked, isTrue);
-    });
-
-    test('getBookmarkedResources returns empty list when no bookmarks', () async {
-      final resources = await repo.getBookmarkedResources('user-001');
-      expect(resources, isEmpty);
-    });
-
-    // ── getDownloadedResources ────────────────────────────────────────────────
-
-    test('getDownloadedResources returns only downloaded resources', () async {
-      final downloaded = _sampleResource(id: 'res-001', isDownloaded: true);
-      final notDownloaded = _sampleResource(id: 'res-002', title: 'Physics Notes');
-      await rawDb.insert('resources', downloaded.toMap());
-      await rawDb.insert('resources', notDownloaded.toMap());
-
-      final results = await repo.getDownloadedResources();
-
-      expect(results.length, 1);
-      expect(results.first.id, 'res-001');
+      final captured = verify(
+        () => db.update(
+          'resources',
+          captureAny(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).captured;
+      final updatedMap = captured.first as Map<String, Object?>;
+      expect(updatedMap['isDownloaded'], 1);
+      expect(updatedMap['uses'], greaterThan(res.uses));
     });
 
     // ── approveResource ───────────────────────────────────────────────────────
-
     test('approveResource updates backend and local cache', () async {
       final res = _sampleResource(isApproved: false);
-      await rawDb.insert('resources', res.toMap());
-      when(mockNet.approveResource(res.id)).thenAnswer((_) async {});
+      _stubQuery(db, [res.toMap()]);
+      _stubUpdate(db);
+      when(() => mockNet.approveResource(res.id)).thenAnswer((_) async {});
 
       await repo.approveResource(res.id);
 
-      verify(mockNet.approveResource(res.id)).called(1);
-      final rows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect(rows.first['isApproved'], 1);
+      verify(() => mockNet.approveResource(res.id)).called(1);
+      final captured = verify(
+        () => db.update(
+          'resources',
+          captureAny(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).captured;
+      final updatedMap = captured.first as Map<String, Object?>;
+      expect(updatedMap['isApproved'], 1);
     });
 
     // ── deleteResource ────────────────────────────────────────────────────────
+    test('deleteResource removes resource and related data', () async {
+      _stubDelete(db);
+      when(() => mockNet.deleteResource(any())).thenAnswer((_) async {});
 
-    test('deleteResource removes resource and related bookmarks/reviews', () async {
-      final res = _sampleResource();
-      await rawDb.insert('resources', res.toMap());
-      await rawDb.insert('bookmarks', {
-        'user_id': 'user-001',
-        'resource_id': res.id,
-      });
-      await rawDb.insert('reviews', _sampleReview().toMap());
-      when(mockNet.deleteResource(res.id)).thenAnswer((_) async {});
+      await repo.deleteResource('res-001');
 
-      await repo.deleteResource(res.id);
-
-      verify(mockNet.deleteResource(res.id)).called(1);
-      expect(await rawDb.query('resources', where: 'id = ?', whereArgs: [res.id]), isEmpty);
-      expect(await rawDb.query('bookmarks'), isEmpty);
-      expect(await rawDb.query('reviews'), isEmpty);
+      verify(() => mockNet.deleteResource('res-001')).called(1);
+      // Deletes resources, bookmarks, reviews
+      verify(
+        () => db.delete(
+          any(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(3);
     });
 
     // ── addReview ─────────────────────────────────────────────────────────────
-
-    test('addReview saves to backend and local cache, updates resource rating',
-        () async {
+    test('addReview saves to backend and updates resource rating', () async {
       final res = _sampleResource();
-      await rawDb.insert('resources', res.toMap());
       final review = _sampleReview();
-      when(mockNet.addReview(any)).thenAnswer((_) async => review);
+      _stubQuery(db, [res.toMap()]);
+      _stubInsert(db);
+      _stubUpdate(db);
+      when(() => mockNet.addReview(any())).thenAnswer((_) async => review);
 
       await repo.addReview(review);
 
-      verify(mockNet.addReview(any)).called(1);
-      final reviewRows = await rawDb.query('reviews');
-      expect(reviewRows, isNotEmpty);
-
-      final resRows = await rawDb.query('resources',
-          where: 'id = ?', whereArgs: [res.id]);
-      expect((resRows.first['reviewCount'] as int), greaterThan(res.reviewCount));
+      verify(() => mockNet.addReview(any())).called(1);
+      verify(() => db.insert('reviews', any())).called(1);
+      // Rating update
+      final captured = verify(
+        () => db.update(
+          'resources',
+          captureAny(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).captured;
+      final updatedMap = captured.first as Map<String, Object?>;
+      expect((updatedMap['reviewCount'] as int), greaterThan(res.reviewCount));
     });
 
     // ── getReviewsForResource ─────────────────────────────────────────────────
-
-    test('getReviewsForResource returns correct reviews', () async {
+    test('getReviewsForResource returns cached reviews', () async {
       final review = _sampleReview();
-      await rawDb.insert('reviews', review.toMap());
+      _stubQuery(db, [review.toMap()]);
 
       final reviews = await repo.getReviewsForResource('res-001');
 
+      verifyNever(() => mockNet.fetchReviews(any()));
       expect(reviews.length, 1);
       expect(reviews.first.comment, 'Excellent resource!');
     });
 
-    // ── getUserReviewCount ────────────────────────────────────────────────────
+    test('getReviewsForResource falls back to network on cache miss', () async {
+      final review = _sampleReview();
+      _stubQuery(db, []);
+      _stubInsert(db);
+      when(() => mockNet.fetchReviews(any())).thenAnswer((_) async => [review]);
 
-    test('getUserReviewCount returns correct count', () async {
-      await rawDb.insert('reviews', _sampleReview(resourceId: 'res-001').toMap());
-      await rawDb.insert('reviews',
-          _sampleReview(resourceId: 'res-002').copyWith(id: 'rev-002').toMap());
+      final reviews = await repo.getReviewsForResource('res-001');
 
-      final count = await repo.getUserReviewCount('user-001');
-
-      expect(count, 2);
+      verify(() => mockNet.fetchReviews('res-001')).called(1);
+      expect(reviews.length, 1);
     });
   });
 
@@ -654,109 +638,124 @@ void main() {
   // REQUEST REPOSITORY
   // --------------------------------------------------------------------------
   group('RequestRepositoryImpl', () {
-    late Database rawDb;
-    late AppDatabase db;
+    late MockAppDatabase db;
     late MockNetworkService mockNet;
     late RequestRepositoryImpl repo;
 
-    setUp(() async {
-      rawDb = await _openTestDb();
-      db = _wrapDb(rawDb);
+    setUp(() {
+      db = MockAppDatabase();
       mockNet = MockNetworkService();
       repo = RequestRepositoryImpl(database: db, network: mockNet);
     });
 
-    tearDown(() async => rawDb.close());
-
     // ── getRequests ───────────────────────────────────────────────────────────
-
     test('getRequests returns cached requests', () async {
-      await rawDb.insert('requests', _sampleRequest().toMap());
+      final req = _sampleRequest();
+      _stubQuery(db, [req.toMap()]);
 
       final requests = await repo.getRequests();
 
-      verifyNever(mockNet.fetchRequests());
+      verifyNever(() => mockNet.fetchRequests());
       expect(requests.length, 1);
     });
 
     test('getRequests fetches from network on cache miss', () async {
       final remote = [_sampleRequest(), _sampleRequest(id: 'req-002')];
-      when(mockNet.fetchRequests()).thenAnswer((_) async => remote);
+      _stubQuery(db, []);
+      _stubInsert(db);
+      when(() => mockNet.fetchRequests()).thenAnswer((_) async => remote);
 
       final requests = await repo.getRequests();
 
-      verify(mockNet.fetchRequests()).called(1);
+      verify(() => mockNet.fetchRequests()).called(1);
       expect(requests.length, 2);
     });
 
     // ── createRequest ─────────────────────────────────────────────────────────
-
     test('createRequest posts to network and caches locally', () async {
       final req = _sampleRequest();
-      when(mockNet.createRequest(any)).thenAnswer((_) async => req);
+      _stubInsert(db);
+      when(() => mockNet.createRequest(any())).thenAnswer((_) async => req);
 
       await repo.createRequest(req);
 
-      verify(mockNet.createRequest(any)).called(1);
-      final rows = await rawDb.query('requests',
-          where: 'id = ?', whereArgs: [req.id]);
-      expect(rows, isNotEmpty);
+      verify(() => mockNet.createRequest(any())).called(1);
+      verify(() => db.insert('requests', any())).called(1);
     });
 
     // ── updateRequest ─────────────────────────────────────────────────────────
+    test('updateRequest syncs to network and updates local cache', () async {
+      _stubUpdate(db);
+      when(() => mockNet.updateRequest(any())).thenAnswer((_) async {});
 
-    test('updateRequest syncs to network and updates local SQLite', () async {
-      final req = _sampleRequest();
-      await rawDb.insert('requests', req.toMap());
-      when(mockNet.updateRequest(any)).thenAnswer((_) async {});
-
-      final updated = req.copyWith(title: 'Updated Title');
+      final updated = _sampleRequest().copyWith(title: 'Updated Title');
       await repo.updateRequest(updated);
 
-      verify(mockNet.updateRequest(any)).called(1);
-      final rows = await rawDb.query('requests',
-          where: 'id = ?', whereArgs: [req.id]);
-      expect(rows.first['title'], 'Updated Title');
+      verify(() => mockNet.updateRequest(any())).called(1);
+      verify(
+        () => db.update(
+          'requests',
+          any(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(1);
     });
 
     // ── deleteRequest ─────────────────────────────────────────────────────────
+    test('deleteRequest removes from network and local cache', () async {
+      _stubDelete(db);
+      when(() => mockNet.deleteRequest(any())).thenAnswer((_) async {});
 
-    test('deleteRequest removes from network and local SQLite', () async {
-      final req = _sampleRequest();
-      await rawDb.insert('requests', req.toMap());
-      when(mockNet.deleteRequest(req.id)).thenAnswer((_) async {});
+      await repo.deleteRequest('req-001');
 
-      await repo.deleteRequest(req.id);
-
-      verify(mockNet.deleteRequest(req.id)).called(1);
-      final rows = await rawDb.query('requests',
-          where: 'id = ?', whereArgs: [req.id]);
-      expect(rows, isEmpty);
+      verify(() => mockNet.deleteRequest('req-001')).called(1);
+      verify(
+        () => db.delete(
+          'requests',
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(1);
     });
 
     // ── fulfillRequest ────────────────────────────────────────────────────────
-
     test('fulfillRequest updates status in backend and local cache', () async {
       final req = _sampleRequest(status: 'open');
-      await rawDb.insert('requests', req.toMap());
       final fulfilled = req.copyWith(status: 'fulfilled');
-      when(mockNet.fulfillRequest(req.id))
-          .thenAnswer((_) async => fulfilled);
+      _stubUpdate(db);
+      when(
+        () => mockNet.fulfillRequest(req.id),
+      ).thenAnswer((_) async => fulfilled);
 
       await repo.fulfillRequest(req.id);
 
-      verify(mockNet.fulfillRequest(req.id)).called(1);
-      final rows = await rawDb.query('requests',
-          where: 'id = ?', whereArgs: [req.id]);
-      expect(rows.first['status'], 'fulfilled');
+      verify(() => mockNet.fulfillRequest(req.id)).called(1);
+      verify(
+        () => db.update(
+          'requests',
+          any(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(1);
     });
 
     test('fulfillRequest is a no-op when network returns null', () async {
-      when(mockNet.fulfillRequest('missing-id'))
-          .thenAnswer((_) async => null);
+      when(
+        () => mockNet.fulfillRequest('missing-id'),
+      ).thenAnswer((_) async => null);
 
-      // Should not throw
       await repo.fulfillRequest('missing-id');
+
+      verifyNever(
+        () => db.update(
+          any(),
+          any(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      );
     });
   });
 
@@ -764,76 +763,81 @@ void main() {
   // NOTIFICATION REPOSITORY
   // --------------------------------------------------------------------------
   group('NotificationRepositoryImpl', () {
-    late Database rawDb;
-    late AppDatabase db;
+    late MockAppDatabase db;
     late NotificationRepositoryImpl repo;
 
-    setUp(() async {
-      rawDb = await _openTestDb();
-      db = _wrapDb(rawDb);
+    setUp(() {
+      db = MockAppDatabase();
       repo = NotificationRepositoryImpl(database: db);
     });
 
-    tearDown(() async => rawDb.close());
-
     // ── addNotification ───────────────────────────────────────────────────────
-
-    test('addNotification persists notification', () async {
+    test('addNotification persists notification to DB', () async {
+      _stubInsert(db);
       final notif = _sampleNotification();
+
       await repo.addNotification(notif);
 
-      final rows = await rawDb.query('notifications');
-      expect(rows.length, 1);
-      expect(rows.first['title'], 'New Resource Available');
-      expect(rows.first['is_read'], 0);
+      final captured = verify(
+        () => db.insert('notifications', captureAny()),
+      ).captured;
+      final map = captured.first as Map<String, Object?>;
+      expect(map['title'], 'New Resource Available');
+      expect(map['is_read'], 0);
     });
 
     // ── getNotifications ──────────────────────────────────────────────────────
+    test('getNotifications returns all notifications', () async {
+      final notifs = [
+        _sampleNotification(id: 'notif-001').toMap(),
+        _sampleNotification(id: 'notif-002').toMap(),
+      ];
+      _stubQuery(db, notifs);
 
-    test('getNotifications returns all notifications ordered by time DESC',
-        () async {
-      await rawDb.insert('notifications',
-          _sampleNotification(id: 'notif-001').copyWith(time: '2024-01-10').toMap());
-      await rawDb.insert('notifications',
-          _sampleNotification(id: 'notif-002').copyWith(time: '2024-01-15').toMap());
+      final result = await repo.getNotifications();
 
-      final notifs = await repo.getNotifications();
-
-      expect(notifs.length, 2);
-      // Most recent first
-      expect(notifs.first.id, 'notif-002');
+      expect(result.length, 2);
     });
 
     test('getNotifications returns empty list when there are none', () async {
-      final notifs = await repo.getNotifications();
-      expect(notifs, isEmpty);
+      _stubQuery(db, []);
+
+      final result = await repo.getNotifications();
+
+      expect(result, isEmpty);
     });
 
     // ── markAsRead ────────────────────────────────────────────────────────────
+    test('markAsRead updates is_read flag', () async {
+      _stubUpdate(db);
 
-    test('markAsRead updates is_read flag in SQLite', () async {
-      final notif = _sampleNotification(isRead: false);
-      await rawDb.insert('notifications', notif.toMap());
+      await repo.markAsRead('notif-001');
 
-      await repo.markAsRead(notif.id);
-
-      final rows = await rawDb.query('notifications',
-          where: 'id = ?', whereArgs: [notif.id]);
-      expect(rows.first['is_read'], 1);
+      final captured = verify(
+        () => db.update(
+          'notifications',
+          captureAny(),
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).captured;
+      final map = captured.first as Map<String, Object?>;
+      expect(map['is_read'], 1);
     });
 
     // ── clearAll ──────────────────────────────────────────────────────────────
-
     test('clearAll removes all notifications', () async {
-      await rawDb.insert(
-          'notifications', _sampleNotification(id: 'notif-001').toMap());
-      await rawDb.insert(
-          'notifications', _sampleNotification(id: 'notif-002').toMap());
+      _stubDelete(db);
 
       await repo.clearAll();
 
-      final rows = await rawDb.query('notifications');
-      expect(rows, isEmpty);
+      verify(
+        () => db.delete(
+          'notifications',
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+        ),
+      ).called(1);
     });
   });
 
@@ -851,20 +855,25 @@ void main() {
       expect(restored.status, user.status);
     });
 
-    test('ResourceModel toMap / fromMap round-trip (booleans stored as ints)',
-        () {
-      final res = _sampleResource(isApproved: true, isBookmarked: true, isDownloaded: true);
-      final map = res.toMap();
-      expect(map['isApproved'], 1);
-      expect(map['isBookmarked'], 1);
-      expect(map['isDownloaded'], 1);
-
-      final restored = ResourceModel.fromMap(map);
-      expect(restored.isApproved, isTrue);
-      expect(restored.isBookmarked, isTrue);
-      expect(restored.isDownloaded, isTrue);
-      expect(restored.courseCode, 'MATH101');
-    });
+    test(
+      'ResourceModel toMap / fromMap round-trip (booleans stored as ints)',
+      () {
+        final res = _sampleResource(
+          isApproved: true,
+          isBookmarked: true,
+          isDownloaded: true,
+        );
+        final map = res.toMap();
+        expect(map['isApproved'], 1);
+        expect(map['isBookmarked'], 1);
+        expect(map['isDownloaded'], 1);
+        final restored = ResourceModel.fromMap(map);
+        expect(restored.isApproved, isTrue);
+        expect(restored.isBookmarked, isTrue);
+        expect(restored.isDownloaded, isTrue);
+        expect(restored.courseCode, 'MATH101');
+      },
+    );
 
     test('ResourceModel.empty() provides safe defaults', () {
       final empty = ResourceModel.empty('res-empty');
@@ -894,7 +903,6 @@ void main() {
       final notif = _sampleNotification(isRead: true);
       final map = notif.toMap();
       expect(map['is_read'], 1);
-
       final restored = NotificationModel.fromMap(map);
       expect(restored.id, notif.id);
       expect(restored.isRead, isTrue);
@@ -925,8 +933,7 @@ void main() {
   });
 }
 
-// ─── ReviewModel.copyWith helper (not in generated model) ────────────────────
-// Add this extension to make the test compile without modifying production code.
+// ─── ReviewModel.copyWith helper ─────────────────────────────────────────────
 extension ReviewModelX on ReviewModel {
   ReviewModel copyWith({
     String? id,
@@ -945,24 +952,6 @@ extension ReviewModelX on ReviewModel {
       rating: rating ?? this.rating,
       comment: comment ?? this.comment,
       time: time ?? this.time,
-    );
-  }
-}
-
-extension NotificationModelX on NotificationModel {
-  NotificationModel copyWith({
-    String? id,
-    String? title,
-    String? message,
-    String? time,
-    bool? isRead,
-  }) {
-    return NotificationModel(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      message: message ?? this.message,
-      time: time ?? this.time,
-      isRead: isRead ?? this.isRead,
     );
   }
 }

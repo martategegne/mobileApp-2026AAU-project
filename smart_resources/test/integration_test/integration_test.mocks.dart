@@ -126,9 +126,17 @@ class MockNetworkService extends _i1.Mock implements _i6.NetworkService {
           as _i7.Future<_i3.ResourceModel?>);
 
   @override
-  _i7.Future<_i3.ResourceModel> uploadResource(_i3.ResourceModel? resource) =>
+  _i7.Future<_i3.ResourceModel> uploadResource(
+    _i3.ResourceModel? resource, {
+    List<int>? fileBytes,
+    String? fileName,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#uploadResource, [resource]),
+            Invocation.method(
+              #uploadResource,
+              [resource],
+              {#fileBytes: fileBytes, #fileName: fileName},
+            ),
             returnValue: _i7.Future<_i3.ResourceModel>.value(
               _FakeResourceModel_1(
                 this,
@@ -137,7 +145,6 @@ class MockNetworkService extends _i1.Mock implements _i6.NetworkService {
             ),
           )
           as _i7.Future<_i3.ResourceModel>);
-
   @override
   _i7.Future<void> updateResource(_i3.ResourceModel? resource) =>
       (super.noSuchMethod(

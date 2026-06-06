@@ -4,7 +4,6 @@ import 'package:smart_resources/features/resources/presentation/providers/resour
 import 'package:smart_resources/core/providers.dart';
 import 'package:smart_resources/features/resources/domain/entities/review.dart';
 import 'package:smart_resources/features/resources/domain/repositories/resource_repository.dart';
-import 'package:smart_resources/features/resources/domain/entities/resource.dart';
 
 class FakeResourceRepository extends Fake implements ResourceRepository {
   @override

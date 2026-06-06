@@ -2,31 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_resources/features/requests/data/models/request_model.dart';
 import 'package:smart_resources/features/resources/data/models/resource_model.dart';
-import 'package:smart_resources/features/auth/presentation/screens/login_screen.dart';
-import 'package:smart_resources/features/auth/presentation/screens/signup_screen.dart';
-import 'package:smart_resources/features/home/presentation/screens/student_dash.dart';
-import 'package:smart_resources/features/home/presentation/screens/admin_dash.dart';
-import 'package:smart_resources/features/resources/presentation/screens/resource_list.dart';
-import 'package:smart_resources/features/resources/presentation/screens/resource_details.dart';
-import 'package:smart_resources/features/resources/presentation/screens/upload_resource.dart';
-import 'package:smart_resources/features/resources/presentation/screens/bookmarks_screen.dart';
-import 'package:smart_resources/features/resources/presentation/screens/downloads_screen.dart';
-import 'package:smart_resources/features/requests/presentation/screens/requests_list.dart';
-import 'package:smart_resources/features/requests/presentation/screens/create_request.dart';
-import 'package:smart_resources/features/admin_panel/presentation/screens/manage_resources.dart';
-import 'package:smart_resources/features/admin_panel/presentation/screens/manage_requests.dart';
-import 'package:smart_resources/features/admin_panel/presentation/screens/manage_users.dart';
-import 'package:smart_resources/features/profile/presentation/screens/profile_screen.dart';
-import 'package:smart_resources/features/profile/presentation/screens/edit_profile_screen.dart';
-import 'package:smart_resources/features/profile/presentation/screens/preferences_screen.dart';
-import 'package:smart_resources/features/notifications/presentation/screens/notifications_screen.dart';
-import 'package:smart_resources/core/widgets/main_nav_bar.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/signup_screen.dart';
+import '../../features/home/presentation/screens/student_dash.dart';
+import '../../features/home/presentation/screens/admin_dash.dart';
+import '../../features/resources/presentation/screens/resource_list.dart';
+import '../../features/resources/presentation/screens/resource_details.dart';
+import '../../features/resources/presentation/screens/upload_resource.dart';
+import '../../features/resources/presentation/screens/bookmarks_screen.dart';
+import '../../features/resources/presentation/screens/downloads_screen.dart';
+import '../../features/requests/presentation/screens/requests_list.dart';
+import '../../features/requests/presentation/screens/create_request.dart';
+import '../../features/admin_panel/presentation/screens/manage_resources.dart';
+import '../../features/admin_panel/presentation/screens/manage_requests.dart';
+import '../../features/admin_panel/presentation/screens/manage_users.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/profile/presentation/screens/preferences_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../widgets/main_nav_bar.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/login',
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignUpScreen(),
