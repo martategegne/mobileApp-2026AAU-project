@@ -1,69 +1,79 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_resources/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:smart_resources/features/auth/domain/entities/user.dart';
+import 'package:smart_resources/features/auth/data/models/user_model.dart';
+import 'package:smart_resources/core/database/app_database.dart';
+import 'package:smart_resources/core/network/network_service.dart';
+
+// Simple fakes for unit testing
+class FakeDatabase extends Fake implements AppDatabase {
+  @override
+  Future<List<Map<String, Object?>>> query(String table,
+      {String? where,
+      List<Object?>? whereArgs,
+      bool? distinct,
+      List<String>? columns,
+      String? groupBy,
+      String? having,
+      String? orderBy,
+      int? limit,
+      int? offset}) async =>
+      [];
+
+  @override
+  Future<int> insert(String table, Map<String, Object?> values) async => 1;
+}
+
+class FakeNetwork extends Fake implements NetworkService {
+  @override
+  Future<UserModel?> authenticate(String email, String password) async {
+    return UserModel(
+      id: '1',
+      name: 'Test User',
+      email: email,
+      password: password,
+      role: 'User',
+      status: 'active',
+    );
+  }
+}
 
 void main() {
-  group('Auth Service Tests', () {
-    test('Login with valid credentials should return user', () {
-      // Arrange
-      const String email = 'test@example.com';
-      const String password = 'password123';
+  group('Auth Repository Unit Tests', () {
+    late AuthRepositoryImpl repository;
 
-      // Act
-      // var user = await authService.login(email, password);
-
-      // Assert
-      // expect(user, isNotNull);
-      // expect(user.email, equals(email));
-      expect(true, true);
+    setUp(() {
+      repository = AuthRepositoryImpl(
+        database: FakeDatabase(),
+        network: FakeNetwork(),
+      );
     });
 
-    test('Login with invalid credentials should throw exception', () {
-      // Arrange
-      const String email = 'invalid@example.com';
-      const String password = 'wrongpass';
+    test('Login should return user when credentials are valid', () async {
+      final user = await repository.login('test@example.com', 'password123');
 
-      // Act & Assert
-      // expect(
-      //   () => authService.login(email, password),
-      //   throwsException,
-      // );
-      expect(true, true);
+      expect(user.email, equals('test@example.com'));
+      expect(user.name, equals('Test User'));
     });
 
-    test('Signup should create new user account', () {
-      // Arrange
-      const String email = 'newuser@example.com';
-      const String password = 'newpass123';
-      const String name = 'New User';
+    test('User isAdmin helper works correctly', () {
+      const admin = User(
+          id: '1',
+          name: 'A',
+          email: 'e',
+          password: 'p',
+          role: 'Admin',
+          status: 'active');
+      const student = User(
+          id: '2',
+          name: 'S',
+          email: 'e',
+          password: 'p',
+          role: 'User',
+          status: 'active');
 
-      // Act
-      // var user = await authService.signup(email, password, name);
-
-      // Assert
-      // expect(user.email, equals(email));
-      // expect(user.name, equals(name));
-      expect(true, true);
-    });
-
-    test('Logout should clear user session', () {
-      // Act
-      // await authService.logout();
-
-      // Assert
-      // var currentUser = authService.getCurrentUser();
-      // expect(currentUser, isNull);
-      expect(true, true);
-    });
-
-    test('Password reset should send email', () {
-      // Arrange
-      const String email = 'test@example.com';
-
-      // Act
-      // var result = await authService.resetPassword(email);
-
-      // Assert
-      // expect(result, isTrue);
-      expect(true, true);
+      expect(admin.isAdmin, isTrue);
+      expect(student.isAdmin, isFalse);
     });
   });
 }

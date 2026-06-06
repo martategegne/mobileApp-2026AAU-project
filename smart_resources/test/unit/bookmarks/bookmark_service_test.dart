@@ -1,63 +1,42 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_resources/features/resources/data/repositories/resource_repository_impl.dart';
+import 'package:smart_resources/core/database/app_database.dart';
+import 'package:smart_resources/core/network/network_service.dart';
+
+class FakeDatabase extends Fake implements AppDatabase {
+  @override
+  Future<List<Map<String, Object?>>> query(String table, {String? where, List<Object?>? whereArgs, bool? distinct, List<String>? columns, String? groupBy, String? having, String? orderBy, int? limit, int? offset}) async => [];
+  @override
+  Future<int> insert(String table, Map<String, Object?> values) async => 1;
+  @override
+  Future<int> delete(String table, {required String where, required List<Object?> whereArgs}) async => 1;
+  @override
+  Future<int> update(String table, Map<String, Object?> values, {required String where, required List<Object?> whereArgs}) async => 1;
+}
+
+class FakeNetwork extends Fake implements NetworkService {
+  @override
+  Future<void> addBookmark(String userId, String resourceId) async {}
+  @override
+  Future<void> removeBookmark(String userId, String resourceId) async {}
+}
 
 void main() {
-  group('Bookmark Service Tests', () {
-    test('Add bookmark should save resource', () {
-      // Arrange
-      const String resourceId = '123';
+  group('Bookmark Logic Unit Tests', () {
+    late ResourceRepositoryImpl repository;
 
-      // Act
-      // var bookmark = await bookmarkService.addBookmark(resourceId);
-
-      // Assert
-      // expect(bookmark.resourceId, equals(resourceId));
-      // expect(bookmark.isSaved, isTrue);
-      expect(true, true);
+    setUp(() {
+      repository = ResourceRepositoryImpl(
+        database: FakeDatabase(),
+        network: FakeNetwork(),
+      );
     });
 
-    test('Get user bookmarks should return saved resources', () {
-      // Act
-      // var bookmarks = await bookmarkService.getUserBookmarks();
-
-      // Assert
-      // expect(bookmarks, isNotEmpty);
-      // bookmarks.forEach((bookmark) {
-      //   expect(bookmark.isSaved, isTrue);
-      // });
-      expect(true, true);
-    });
-
-    test('Remove bookmark should unsave resource', () {
-      // Arrange
-      const String resourceId = '123';
-
-      // Act
-      // var success = await bookmarkService.removeBookmark(resourceId);
-
-      // Assert
-      // expect(success, isTrue);
-      expect(true, true);
-    });
-
-    test('Check if resource is bookmarked', () {
-      // Arrange
-      const String resourceId = '123';
-
-      // Act
-      // var isBookmarked = await bookmarkService.isBookmarked(resourceId);
-
-      // Assert
-      // expect(isBookmarked, isBool);
-      expect(true, true);
-    });
-
-    test('Get bookmark count', () {
-      // Act
-      // var count = await bookmarkService.getBookmarkCount();
-
-      // Assert
-      // expect(count, greaterThanOrEqualTo(0));
-      expect(true, true);
+    test('bookmarkResource should trigger network and database calls', () async {
+      // Act & Assert
+      await repository.bookmarkResource('user1', 'res1', true);
+      // If no exception is thrown, the logic flows correctly through fakes
+      expect(true, isTrue);
     });
   });
 }

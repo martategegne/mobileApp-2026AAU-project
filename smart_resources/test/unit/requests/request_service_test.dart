@@ -1,69 +1,38 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_resources/features/requests/data/repositories/request_repository_impl.dart';
+import 'package:smart_resources/features/requests/data/models/request_model.dart';
+import 'package:smart_resources/core/database/app_database.dart';
+import 'package:smart_resources/core/network/network_service.dart';
+
+class FakeDatabase extends Fake implements AppDatabase {
+  @override
+  Future<List<Map<String, Object?>>> query(String table, {String? where, List<Object?>? whereArgs, bool? distinct, List<String>? columns, String? groupBy, String? having, String? orderBy, int? limit, int? offset}) async => [];
+  @override
+  Future<int> insert(String table, Map<String, Object?> values) async => 1;
+}
+
+class FakeNetwork extends Fake implements NetworkService {
+  @override
+  Future<List<RequestModel>> fetchRequests() async => [
+    RequestModel(id: '1', title: 'Request 1', description: 'D1', courseCode: 'C1', requestedBy: 'User', time: DateTime.now().toString(), status: 'open')
+  ];
+}
 
 void main() {
-  group('Request Service Tests', () {
-    test('Create resource request should return request ID', () {
-      // Arrange
-      const String resourceId = '123';
-      const String reason = 'Need for course project';
+  group('Request Repository Unit Tests', () {
+    late RequestRepositoryImpl repository;
 
-      // Act
-      // var request = await requestService.createRequest(
-      //   resourceId: resourceId,
-      //   reason: reason,
-      // );
-
-      // Assert
-      // expect(request.id, isNotNull);
-      // expect(request.resourceId, equals(resourceId));
-      // expect(request.status, equals('pending'));
-      expect(true, true);
+    setUp(() {
+      repository = RequestRepositoryImpl(
+        database: FakeDatabase(),
+        network: FakeNetwork(),
+      );
     });
 
-    test('Fetch pending requests for user', () {
-      // Act
-      // var requests = await requestService.getUserRequests();
-
-      // Assert
-      // expect(requests, isNotNull);
-      // requests.forEach((request) {
-      //   expect(request.status, equals('pending'));
-      // });
-      expect(true, true);
-    });
-
-    test('Approve request should update status', () {
-      // Arrange
-      const String requestId = '456';
-
-      // Act
-      // var request = await requestService.approveRequest(requestId);
-
-      // Assert
-      // expect(request.status, equals('approved'));
-      expect(true, true);
-    });
-
-    test('Reject request should update status', () {
-      // Arrange
-      const String requestId = '456';
-      const String reason = 'Invalid request';
-
-      // Act
-      // var request = await requestService.rejectRequest(requestId, reason);
-
-      // Assert
-      // expect(request.status, equals('rejected'));
-      expect(true, true);
-    });
-
-    test('Get request history for user', () {
-      // Act
-      // var history = await requestService.getRequestHistory();
-
-      // Assert
-      // expect(history, isNotEmpty);
-      expect(true, true);
+    test('getRequests should fetch from network if local is empty', () async {
+      final requests = await repository.getRequests();
+      expect(requests, isNotEmpty);
+      expect(requests.first.title, equals('Request 1'));
     });
   });
 }
