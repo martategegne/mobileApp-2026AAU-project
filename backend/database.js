@@ -13,7 +13,7 @@ class Database {
     return new Promise((resolve, reject) => {
       const db = new sqlite3.Database(DB_PATH, async (err) => {
         if (err) return reject(err);
-        console.log('📦  SQLite  →  studysphere.db');
+        console.log('SQLite  →  studysphere.db');
         const instance = new Database(db);
         try {
           await instance._init();
@@ -160,9 +160,11 @@ class Database {
   }
 
   async updateUser(id, u) {
+    // Use INSERT OR REPLACE so it works even if user was deleted from DB
     await this.run(
-      'UPDATE users SET name=?, email=?, password=?, role=?, status=? WHERE id=?',
-      [u.name, u.email, u.password, u.role, u.status, id]
+      `INSERT OR REPLACE INTO users (id, name, email, password, role, status)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, u.name, u.email, u.password, u.role || 'User', u.status || 'active']
     );
     return this.findUserById(id);
   }
