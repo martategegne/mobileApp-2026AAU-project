@@ -62,42 +62,64 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<User> updateProfile(String id, String name, String email, String password) async {
-    final cached = await database.query('users', where: 'id = ?', whereArgs: [id]);
-    if (cached.isEmpty) throw AuthException('User not found');
-    
-    final existingUser = UserModel.fromMap(cached.first);
-    final updatedUser = existingUser.copyWith(
-      name: name,
-      email: email,
-      password: password,
-    );
-
-    await database.update(
+  Future<User> updateProfile(
+    String id,
+    String name,
+    String email,
+    String password,
+  ) async {
+    // Try local cache first to get existing role/status
+    final cached = await database.query(
       'users',
-      updatedUser.toMap(),
       where: 'id = ?',
       whereArgs: [id],
     );
-    
-    // Sync with network/auth state
+
+    UserModel? existing;
+    if (cached.isNotEmpty) {
+      existing = UserModel.fromMap(cached.first);
+    } else {
+      // Not in cache — fetch from network
+      try {
+        final remoteList = await network.fetchUsers();
+        final match = remoteList.where((u) => u.id == id);
+        if (match.isNotEmpty) existing = match.first as UserModel;
+      } catch (_) {}
+    }
+
+    // Build updated user — always preserve role and status
+    final updatedUser = UserModel(
+      id: id,
+      name: name,
+      email: email,
+      password: password,
+      role: existing?.role ?? 'User',
+      status: existing?.status ?? 'active',
+    );
+
+    // Backend uses INSERT OR REPLACE — works even if user was deleted
     await network.updateUser(updatedUser);
-    
+
+    // Sync local cache
+    await database.insert('users', updatedUser.toMap());
+
     return updatedUser;
   }
 
   @override
   Future<List<User>> getUsers() async {
-    final cached = await database.query('users');
-    if (cached.isNotEmpty) {
+    try {
+      // Always fetch from backend (source of truth)
+      final remoteUsers = await network.fetchUsers();
+      for (final user in remoteUsers) {
+        await database.insert('users', user.toMap());
+      }
+      return remoteUsers;
+    } catch (_) {
+      // Network unavailable — fall back to local cache
+      final cached = await database.query('users');
       return cached.map((row) => UserModel.fromMap(row)).toList();
     }
-
-    final remoteUsers = await network.fetchUsers();
-    for (final user in remoteUsers) {
-      await database.insert('users', user.toMap());
-    }
-    return remoteUsers;
   }
 
   @override

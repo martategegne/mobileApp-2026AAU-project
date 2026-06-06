@@ -13,11 +13,7 @@ class UploadResource extends ConsumerStatefulWidget {
   final bool isAdmin;
   final ResourceModel? resourceToEdit;
 
-  const UploadResource({
-    super.key,
-    required this.isAdmin,
-    this.resourceToEdit,
-  });
+  const UploadResource({super.key, required this.isAdmin, this.resourceToEdit});
 
   @override
   ConsumerState<UploadResource> createState() => _UploadResourceState();
@@ -30,7 +26,9 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
 
   String _selectedFileType = 'PDF';
   String _selectedCategory = 'Lecture Notes';
-  String? _pickedFilePath;
+
+  // File bytes are used on all platforms (web has no path access)
+  List<int>? _pickedFileBytes;
   String? _pickedFileName;
 
   final List<String> _fileTypes = ['PDF', 'DOCX', 'PPTX', 'ZIP'];
@@ -38,18 +36,23 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
     'Lecture Notes',
     'Study Guide',
     'Past Exam',
-    'Assignment'
+    'Assignment',
   ];
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.resourceToEdit?.title ?? '');
-    _courseCodeController = TextEditingController(text: widget.resourceToEdit?.courseCode ?? '');
-    _descriptionController = TextEditingController(text: widget.resourceToEdit?.description ?? '');
+    _titleController = TextEditingController(
+      text: widget.resourceToEdit?.title ?? '',
+    );
+    _courseCodeController = TextEditingController(
+      text: widget.resourceToEdit?.courseCode ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.resourceToEdit?.description ?? '',
+    );
     if (widget.resourceToEdit != null) {
       _selectedFileType = widget.resourceToEdit!.fileType;
-      _pickedFilePath = widget.resourceToEdit!.filePath;
     }
   }
 
@@ -63,10 +66,14 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
 
   Future<void> _pickFile() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles();
-      if (result != null) {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        withData: true, // Always request bytes — works on web + mobile
+        allowedExtensions: ['pdf', 'docx', 'pptx', 'zip'],
+        type: FileType.custom,
+      );
+      if (result != null && result.files.single.bytes != null) {
         setState(() {
-          _pickedFilePath = result.files.single.path;
+          _pickedFileBytes = result.files.single.bytes!.toList();
           _pickedFileName = result.files.single.name;
           final extension = result.files.single.extension?.toUpperCase();
           if (extension != null && _fileTypes.contains(extension)) {
@@ -76,9 +83,9 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking file: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
       }
     }
   }
@@ -98,7 +105,7 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
       return;
     }
 
-    if (widget.resourceToEdit == null && _pickedFilePath == null) {
+    if (widget.resourceToEdit == null && _pickedFileBytes == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a file to upload')),
@@ -107,15 +114,17 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
     }
 
     if (widget.resourceToEdit != null) {
+      // Editing existing resource — metadata update only
       final updatedResource = widget.resourceToEdit!.copyWith(
         title: title,
         courseCode: courseCode,
         description: description,
         fileType: _selectedFileType,
-        filePath: _pickedFilePath,
       );
       try {
-        await ref.read(resourceNotifierProvider.notifier).updateResource(updatedResource);
+        await ref
+            .read(resourceNotifierProvider.notifier)
+            .updateResource(updatedResource);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -123,10 +132,16 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
               backgroundColor: Colors.green,
             ),
           );
-          context.go(widget.isAdmin ? '/admin/resources' : '/student/resources');
+          context.go(
+            widget.isAdmin ? '/admin/resources' : '/student/resources',
+          );
         }
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
       }
     } else {
       final resource = ResourceModel(
@@ -142,11 +157,17 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
         isApproved: widget.isAdmin,
         isBookmarked: false,
         isDownloaded: false,
-        filePath: _pickedFilePath,
+        filePath: null, // Server assigns this after storing the file
       );
 
       try {
-        await ref.read(resourceNotifierProvider.notifier).uploadResource(resource);
+        await ref
+            .read(resourceNotifierProvider.notifier)
+            .uploadResource(
+              resource,
+              fileBytes: _pickedFileBytes,
+              fileName: _pickedFileName,
+            );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -154,13 +175,17 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
               backgroundColor: Colors.green,
             ),
           );
-          context.go(widget.isAdmin ? '/admin/resources' : '/student/resources');
+          // Force full refresh so new resource appears immediately
+          ref.invalidate(resourceNotifierProvider);
+          context.go(
+            widget.isAdmin ? '/admin/resources' : '/student/resources',
+          );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Upload failed: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
         }
       }
     }
@@ -181,13 +206,17 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                 children: [
                   GestureDetector(
                     onTap: () => context.go(
-                      widget.isAdmin ? '/admin/resources' : '/student/resources',
+                      widget.isAdmin
+                          ? '/admin/resources'
+                          : '/student/resources',
                     ),
                     child: Icon(Icons.arrow_back, color: theme.iconTheme.color),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    widget.resourceToEdit != null ? 'Edit Resource' : 'Upload Resource',
+                    widget.resourceToEdit != null
+                        ? 'Edit Resource'
+                        : 'Upload Resource',
                     style: theme.textTheme.titleLarge,
                   ),
                   const Spacer(),
@@ -210,7 +239,7 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                           color: theme.cardColor,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _pickedFilePath != null
+                            color: _pickedFileBytes != null
                                 ? AppColors.primary
                                 : theme.dividerColor,
                           ),
@@ -219,7 +248,7 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              _pickedFilePath != null
+                              _pickedFileBytes != null
                                   ? Icons.file_present
                                   : Icons.cloud_upload_outlined,
                               size: 36,
@@ -228,21 +257,20 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                             const SizedBox(height: 8),
                             Text(
                               _pickedFileName ??
-                                  (_pickedFilePath != null
-                                      ? 'File selected'
-                                      : 'Tap to select file from device'),
+                                  'Tap to select file from device',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            if (_pickedFileName == null && _pickedFilePath == null)
+                            if (_pickedFileName == null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4.0),
                                 child: Text(
                                   'PDF, DOCX, PPTX, or ZIP',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withOpacity(0.45),
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.45),
                                   ),
                                 ),
                               ),
@@ -280,7 +308,10 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                               ),
                               const SizedBox(height: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: theme.cardColor,
                                   border: Border.all(color: theme.dividerColor),
@@ -292,10 +323,15 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                                     isExpanded: true,
                                     dropdownColor: theme.cardColor,
                                     items: _fileTypes
-                                        .map((t) => DropdownMenuItem(
+                                        .map(
+                                          (t) => DropdownMenuItem(
                                             value: t,
-                                            child: Text(t,
-                                                style: theme.textTheme.bodyMedium)))
+                                            child: Text(
+                                              t,
+                                              style: theme.textTheme.bodyMedium,
+                                            ),
+                                          ),
+                                        )
                                         .toList(),
                                     onChanged: (v) =>
                                         setState(() => _selectedFileType = v!),
@@ -318,7 +354,10 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: theme.cardColor,
                         border: Border.all(color: theme.dividerColor),
@@ -330,11 +369,18 @@ class _UploadResourceState extends ConsumerState<UploadResource> {
                           isExpanded: true,
                           dropdownColor: theme.cardColor,
                           items: _categories
-                              .map((c) => DropdownMenuItem(
+                              .map(
+                                (c) => DropdownMenuItem(
                                   value: c,
-                                  child: Text(c, style: theme.textTheme.bodyMedium)))
+                                  child: Text(
+                                    c,
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                ),
+                              )
                               .toList(),
-                          onChanged: (v) => setState(() => _selectedCategory = v!),
+                          onChanged: (v) =>
+                              setState(() => _selectedCategory = v!),
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),

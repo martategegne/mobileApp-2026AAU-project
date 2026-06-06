@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_resources/core/providers.dart';
+import 'package:smart_resources/core/utils/web_download.dart';
 import 'package:smart_resources/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:smart_resources/features/home/presentation/providers/activity_notifier.dart';
 import 'package:smart_resources/features/notifications/presentation/providers/notification_notifier.dart';
-import 'package:open_filex/open_filex.dart';
 import '../../domain/entities/review.dart';
 import '../../data/models/resource_model.dart';
 
@@ -48,6 +49,9 @@ final downloadedResourcesProvider = FutureProvider<List<ResourceModel>>(
 );
 
 class ResourceNotifier extends AsyncNotifier<List<ResourceModel>> {
+  // Backend base URL — matches NetworkService
+  static const _backendBase = 'http://localhost:3000';
+
   @override
   Future<List<ResourceModel>> build() async {
     return _loadResources();
@@ -56,13 +60,19 @@ class ResourceNotifier extends AsyncNotifier<List<ResourceModel>> {
   Future<List<ResourceModel>> _loadResources() async {
     final repository = ref.watch(resourceRepositoryProvider);
     final user = ref.watch(authNotifierProvider).user;
-    final resources = await repository.getResources();
-    
+    final allResources = await repository.getResources();
+
+    // Admins see all resources; students only see approved ones
+    final isAdmin = user?.isAdmin ?? false;
+    final resources = isAdmin
+        ? allResources
+        : allResources.where((r) => (r as ResourceModel).isApproved).toList();
+
     if (user == null) return resources.cast<ResourceModel>();
-    
+
     final bookmarked = await repository.getBookmarkedResources(user.id);
     final bookmarkedIds = bookmarked.map((r) => r.id).toSet();
-    
+
     return resources.map((r) {
       return (r as ResourceModel).copyWith(isBookmarked: bookmarkedIds.contains(r.id));
     }).toList();
@@ -76,9 +86,17 @@ class ResourceNotifier extends AsyncNotifier<List<ResourceModel>> {
     ref.invalidate(profileStatsProvider);
   }
 
-  Future<void> uploadResource(ResourceModel resource) async {
+  Future<void> uploadResource(
+    ResourceModel resource, {
+    List<int>? fileBytes,
+    String? fileName,
+  }) async {
     final repository = ref.read(resourceRepositoryProvider);
-    await repository.uploadResource(resource);
+    await repository.uploadResource(
+      resource,
+      fileBytes: fileBytes,
+      fileName: fileName,
+    );
     
     final user = ref.read(authNotifierProvider).user;
     
@@ -88,7 +106,6 @@ class ResourceNotifier extends AsyncNotifier<List<ResourceModel>> {
       referenceId: resource.id,
     );
 
-    // Global Notification for all users
     await ref.read(notificationNotifierProvider.notifier).addNotification(
       title: 'New Resource Available',
       message: '${user?.name ?? 'Someone'} uploaded ${resource.title}',
@@ -114,20 +131,9 @@ class ResourceNotifier extends AsyncNotifier<List<ResourceModel>> {
   Future<void> toggleBookmark(String resourceId, bool isBookmarked) async {
     final user = ref.read(authNotifierProvider).user;
     if (user == null) return;
-    
+
     final repository = ref.read(resourceRepositoryProvider);
     await repository.bookmarkResource(user.id, resourceId, isBookmarked);
-
-    if (isBookmarked) {
-      final resource = await repository.getResourceById(resourceId);
-      if (resource != null) {
-        await ref.read(activityNotifierProvider.notifier).logActivity(
-          type: 'bookmark',
-          title: "bookmarked '${resource.title}'",
-          referenceId: resourceId,
-        );
-      }
-    }
 
     await refresh();
     ref.invalidate(resourceDetailsProvider(resourceId));
@@ -144,9 +150,20 @@ class ResourceNotifier extends AsyncNotifier<List<ResourceModel>> {
         title: "downloaded '${resource.title}'",
         referenceId: id,
       );
-      
-      if (resource.filePath != null) {
-        await OpenFilex.open(resource.filePath!);
+
+      // Trigger the actual file download in the browser (web)
+      // or skip gracefully on mobile (open_filex not needed for web builds)
+      final filePath = (resource as ResourceModel).filePath;
+      if (filePath != null && filePath.isNotEmpty) {
+        final fullUrl = filePath.startsWith('http')
+            ? filePath
+            : '$_backendBase$filePath';
+
+        if (kIsWeb) {
+          // triggerWebDownload is conditionally imported — no-op on non-web
+          triggerWebDownload(fullUrl, '${resource.title}.${resource.fileType.toLowerCase()}');
+        }
+        // For mobile: add url_launcher or open_filex here when needed
       }
     }
 

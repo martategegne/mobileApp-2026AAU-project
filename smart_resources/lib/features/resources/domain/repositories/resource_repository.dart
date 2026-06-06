@@ -6,7 +6,7 @@ abstract class ResourceRepository {
 
   Future<Resource?> getResourceById(String id);
 
-  Future<Resource> uploadResource(Resource resource);
+  Future<Resource> uploadResource(Resource resource, {List<int>? fileBytes, String? fileName});
 
   Future<void> updateResource(Resource resource);
 

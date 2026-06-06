@@ -148,21 +148,15 @@ void _stubDelete(MockAppDatabase db) {
   ).thenAnswer((_) async => 1);
 }
 
-void _stubPersistDownload(MockAppDatabase db) {
-  when(() => db.persistDownloadedId(any())).thenAnswer((_) async {});
-}
-
-void _stubGetPersistedDownloadedIds(MockAppDatabase db, [Set<String>? ids]) {
-  when(() => db.getPersistedDownloadedIds())
-      .thenAnswer((_) async => ids ?? {});
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 //  TESTS
 // ══════════════════════════════════════════════════════════════════════════════
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
+    SharedPreferences.setMockInitialValues({});
     registerFallbackValue(FakeUserModel());
     registerFallbackValue(FakeResourceModel());
     registerFallbackValue(FakeReviewModel());
@@ -378,7 +372,6 @@ void main() {
       () async {
         final res = _sampleResource();
         _stubInsert(db);
-        _stubGetPersistedDownloadedIds(db);
         when(() => mockNet.fetchResources()).thenAnswer((_) async => [res]);
 
         final resources = await repo.getResources();
@@ -410,7 +403,6 @@ void main() {
       ];
       _stubQuery(db, []);
       _stubInsert(db);
-      _stubGetPersistedDownloadedIds(db);
       when(() => mockNet.fetchResources()).thenAnswer((_) async => remote);
 
       final resources = await repo.getResources();
@@ -523,24 +515,14 @@ void main() {
 
     // ── markDownloaded ────────────────────────────────────────────────────────
     test('markDownloaded sets isDownloaded flag and increments uses', () async {
+      SharedPreferences.setMockInitialValues({});
       final res = _sampleResource();
-      _stubQuery(db, [res.toMap()]);
-      _stubUpdate(db);
-      _stubPersistDownload(db);
 
       await repo.markDownloaded(res.id);
 
-      final captured = verify(
-        () => db.update(
-          'resources',
-          captureAny(),
-          where: any(named: 'where'),
-          whereArgs: any(named: 'whereArgs'),
-        ),
-      ).captured;
-      final updatedMap = captured.first as Map<String, Object?>;
-      expect(updatedMap['isDownloaded'], 1);
-      expect(updatedMap['uses'], greaterThan(res.uses));
+      final prefs = await SharedPreferences.getInstance();
+      final downloaded = prefs.getStringList('downloaded_ids') ?? [];
+      expect(downloaded, contains(res.id));
     });
 
     // ── approveResource ───────────────────────────────────────────────────────

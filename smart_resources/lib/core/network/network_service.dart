@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../../features/auth/data/models/user_model.dart';
 import '../../features/requests/data/models/request_model.dart';
@@ -10,7 +11,14 @@ class NetworkService {
   NetworkService._();
   static final NetworkService instance = NetworkService._();
 
-  static const String _base = 'http://192.168.8.150:3000';
+  // Use localhost on web, fall back to IP on mobile/desktop
+  static String get _base {
+    if (kIsWeb) {
+      return 'http://localhost:3000';
+    }
+    // On mobile/desktop use the private network IP
+    return 'http://10.5.87.204:3000';
+  }
 
   final _client = http.Client();
 
@@ -122,9 +130,43 @@ class NetworkService {
     }
   }
 
-  Future<ResourceModel> uploadResource(ResourceModel resource) async {
-    final data = await _post('/resources', resource.toMap());
-    return ResourceModel.fromMap(Map<String, Object?>.from(data as Map));
+  /// Uploads resource metadata + optional file bytes via multipart/form-data.
+  /// On web, [fileBytes] come from FilePicker; on mobile [filePath] is used.
+  Future<ResourceModel> uploadResource(
+    ResourceModel resource, {
+    List<int>? fileBytes,
+    String? fileName,
+  }) async {
+    final uri = Uri.parse('$_base/resources');
+
+    if (fileBytes != null && fileName != null) {
+      // Multipart upload — sends real file bytes to the server
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add all resource metadata fields as form fields
+      final meta = resource.toMap();
+      meta.forEach((key, value) {
+        if (value != null) request.fields[key] = value.toString();
+      });
+
+      // Attach the file
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName,
+        ),
+      );
+
+      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final res = await http.Response.fromStream(streamed);
+      final parsed = _parse(res);
+      return ResourceModel.fromMap(Map<String, Object?>.from(parsed as Map));
+    } else {
+      // Metadata-only upload (no file attached)
+      final data = await _post('/resources', resource.toMap());
+      return ResourceModel.fromMap(Map<String, Object?>.from(data as Map));
+    }
   }
 
   Future<void> updateResource(ResourceModel resource) async {
@@ -140,7 +182,6 @@ class NetworkService {
   }
 
   //  BOOKMARKS
-  // Uses user_id / resource_id to match Flutter bookmarks table
 
   Future<List<ResourceModel>> fetchBookmarks(String userId) async {
     final data = await _get('/bookmarks/$userId') as List;

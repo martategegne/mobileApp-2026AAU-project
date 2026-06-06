@@ -108,32 +108,39 @@ class ResourceCard extends ConsumerWidget {
                 const SizedBox(width: 4),
                 Text('$uses uses', style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color)),
                 const Spacer(),
-                if (isAdmin || isOwner) ...[
+                // Bookmark and download for everyone
+                _IconBtn(
+                  icon: isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                  color: isBookmarked ? AppColors.warning : null,
+                  onTap: () => ref.read(resourceNotifierProvider.notifier).toggleBookmark(id, !isBookmarked),
+                ),
+                _IconBtn(
+                  icon: isStarred ? Icons.file_download_done : Icons.download_for_offline_outlined,
+                  color: isStarred ? AppColors.success : null,
+                  onTap: () => ref.read(resourceNotifierProvider.notifier).markDownloaded(id),
+                ),
+                // Edit only for owner (not admin)
+                if (!isAdmin && isOwner)
                   _IconBtn(
-                    icon: isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
-                    color: isBookmarked ? AppColors.warning : null,
-                    onTap: () => ref.read(resourceNotifierProvider.notifier).toggleBookmark(id, !isBookmarked),
+                    icon: Icons.edit_outlined,
+                    onTap: () {
+                      final model = ResourceModel(
+                        id: id, title: title, description: description,
+                        courseCode: courseCode, rating: rating, reviewCount: reviewCount,
+                        uses: uses, fileType: fileType, uploader: uploader,
+                        isApproved: false, isBookmarked: isBookmarked,
+                        isDownloaded: isStarred, filePath: filePath,
+                      );
+                      context.go('$prefix/upload', extra: model);
+                    },
                   ),
-                  _IconBtn(
-                    icon: isStarred ? Icons.file_download_done : Icons.download_for_offline_outlined,
-                    color: isStarred ? AppColors.success : null,
-                    onTap: () => ref.read(resourceNotifierProvider.notifier).markDownloaded(id),
-                  ),
+                // Delete for admin or owner
+                if (isAdmin || isOwner)
                   _IconBtn(
                     icon: Icons.delete_outline,
                     color: AppColors.error,
                     onTap: () => _showDeleteDialog(context, ref),
                   ),
-                ] else ...[
-                  _IconBtn(
-                      icon: isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
-                      color: isBookmarked ? AppColors.warning : null,
-                      onTap: () => ref.read(resourceNotifierProvider.notifier).toggleBookmark(id, !isBookmarked)),
-                  _IconBtn(
-                      icon: isStarred ? Icons.file_download_done : Icons.download_for_offline_outlined,
-                      color: isStarred ? AppColors.success : null,
-                      onTap: () => ref.read(resourceNotifierProvider.notifier).markDownloaded(id)),
-                ],
               ],
             ),
           ],
