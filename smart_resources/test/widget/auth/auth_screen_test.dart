@@ -1,102 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_resources/features/auth/presentation/screens/login_screen.dart';
+import 'package:smart_resources/core/theme/app_theme.dart';
 
 void main() {
-  group('Auth Login Screen Tests', () {
+  group('Auth Login Screen Widget Tests', () {
     testWidgets('Login screen should display email and password fields', (
       WidgetTester tester,
     ) async {
-      // Arrange
-      // await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.theme(false, 1.0),
+            home: const LoginScreen(),
+          ),
+        ),
+      );
 
-      // Act
-      // await tester.pumpAndSettle();
-
-      // Assert
-      // expect(find.byType(TextField), findsWidgets);
-      // expect(find.byKey(const Key('email_field')), findsOneWidget);
-      // expect(find.byKey(const Key('password_field')), findsOneWidget);
-      expect(true, true);
+      expect(find.byKey(const Key('email_field')), findsOneWidget);
+      expect(find.byKey(const Key('password_field')), findsOneWidget);
+      expect(find.text('StudySphere'), findsOneWidget);
+      expect(find.text('Login'), findsOneWidget);
     });
 
-    testWidgets('Login button should be disabled when fields are empty', (
+    testWidgets('Validation errors should appear for empty fields', (
       WidgetTester tester,
     ) async {
-      // Arrange
-      // await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.theme(false, 1.0),
+            home: const LoginScreen(),
+          ),
+        ),
+      );
 
-      // Act
-      // await tester.pumpAndSettle();
+      // Tap Login button without entering anything
+      await tester.tap(find.byKey(const Key('login_button')));
+      await tester.pump();
 
-      // Assert
-      // var loginButton = find.byKey(const Key('login_button'));
-      // expect(loginButton, findsOneWidget);
-      expect(true, true);
+      expect(find.text('Email is required.'), findsOneWidget);
+      expect(find.text('Password is required.'), findsOneWidget);
     });
 
-    testWidgets('Submit login form with valid credentials', (
+    testWidgets('Validation error for invalid email', (
       WidgetTester tester,
     ) async {
-      // Arrange
-      // await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.theme(false, 1.0),
+            home: const LoginScreen(),
+          ),
+        ),
+      );
 
-      // Act
-      // await tester.enterText(find.byKey(const Key('email_field')), 'test@example.com');
-      // await tester.enterText(find.byKey(const Key('password_field')), 'password123');
-      // await tester.pumpAndSettle();
-      // await tester.tap(find.byKey(const Key('login_button')));
-      // await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('email_field')), 'invalid-email');
+      await tester.tap(find.byKey(const Key('login_button')));
+      await tester.pump();
 
-      // Assert
-      // expect(find.text('Login Failed'), findsNothing);
-      expect(true, true);
-    });
-
-    testWidgets('Navigation to signup screen', (WidgetTester tester) async {
-      // Arrange
-      // await tester.pumpWidget(const MyApp());
-
-      // Act
-      // await tester.tap(find.byKey(const Key('signup_link')));
-      // await tester.pumpAndSettle();
-
-      // Assert
-      // expect(find.text('Sign Up'), findsWidgets);
-      expect(true, true);
-    });
-  });
-
-  group('Auth Signup Screen Tests', () {
-    testWidgets('Signup screen should display required fields', (
-      WidgetTester tester,
-    ) async {
-      // Arrange
-      // await tester.pumpWidget(const MyApp());
-
-      // Act
-      // await tester.pumpAndSettle();
-
-      // Assert
-      // expect(find.byKey(const Key('name_field')), findsOneWidget);
-      // expect(find.byKey(const Key('email_field')), findsOneWidget);
-      // expect(find.byKey(const Key('password_field')), findsOneWidget);
-      expect(true, true);
-    });
-
-    testWidgets('Password confirmation should match', (
-      WidgetTester tester,
-    ) async {
-      // Arrange
-      // await tester.pumpWidget(const MyApp());
-
-      // Act
-      // await tester.enterText(find.byKey(const Key('password_field')), 'password123');
-      // await tester.enterText(find.byKey(const Key('confirm_password_field')), 'password123');
-      // await tester.pumpAndSettle();
-
-      // Assert
-      // expect(find.text('Passwords do not match'), findsNothing);
-      expect(true, true);
+      expect(find.text('Please enter a valid email address.'), findsOneWidget);
     });
   });
 }
