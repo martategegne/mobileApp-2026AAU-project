@@ -15,10 +15,10 @@ class ActivityNotifier extends AsyncNotifier<List<Activity>> {
   }
 
   Future<List<Activity>> _loadActivities() async {
-    final user = ref.watch(authNotifierProvider).user;
+    final user = ref.read(authNotifierProvider).user;
     if (user == null) return [];
 
-    final repository = ref.watch(activityRepositoryProvider);
+    final repository = ref.read(activityRepositoryProvider);
     final all = await repository.getRecentActivities(userId: user.id);
 
     // Only show activities from the last 2 minutes

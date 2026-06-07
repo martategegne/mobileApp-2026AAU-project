@@ -34,16 +34,16 @@ final resourceReviewsProvider = FutureProvider.family<List<Review>, String>((ref
 
 final bookmarkedResourcesProvider = FutureProvider<List<ResourceModel>>(
   (ref) async {
-    final user = ref.watch(authNotifierProvider).user;
+    final user = ref.read(authNotifierProvider).user;
     if (user == null) return [];
-    final resources = await ref.watch(resourceRepositoryProvider).getBookmarkedResources(user.id);
+    final resources = await ref.read(resourceRepositoryProvider).getBookmarkedResources(user.id);
     return resources.cast<ResourceModel>();
   },
 );
 
 final downloadedResourcesProvider = FutureProvider<List<ResourceModel>>(
   (ref) async {
-    final resources = await ref.watch(resourceRepositoryProvider).getDownloadedResources();
+    final resources = await ref.read(resourceRepositoryProvider).getDownloadedResources();
     return resources.cast<ResourceModel>();
   },
 );
@@ -58,23 +58,31 @@ class ResourceNotifier extends AsyncNotifier<List<ResourceModel>> {
   }
 
   Future<List<ResourceModel>> _loadResources() async {
-    final repository = ref.watch(resourceRepositoryProvider);
-    final user = ref.watch(authNotifierProvider).user;
+    // Use ref.read (not ref.watch) inside async methods to avoid
+    // triggering rebuild cycles that reset auth state
+    final repository = ref.read(resourceRepositoryProvider);
+    final user = ref.read(authNotifierProvider).user;
     final allResources = await repository.getResources();
 
-    // Admins see all resources; students only see approved ones
+    // Admins see all; students see approved + their own pending uploads
     final isAdmin = user?.isAdmin ?? false;
-    final resources = isAdmin
-        ? allResources
-        : allResources.where((r) => (r as ResourceModel).isApproved).toList();
+    final List<ResourceModel> resources;
+    if (isAdmin) {
+      resources = allResources.cast<ResourceModel>();
+    } else {
+      resources = allResources
+          .cast<ResourceModel>()
+          .where((r) => r.isApproved || r.uploader == (user?.name ?? ''))
+          .toList();
+    }
 
-    if (user == null) return resources.cast<ResourceModel>();
+    if (user == null) return resources;
 
     final bookmarked = await repository.getBookmarkedResources(user.id);
     final bookmarkedIds = bookmarked.map((r) => r.id).toSet();
 
     return resources.map((r) {
-      return (r as ResourceModel).copyWith(isBookmarked: bookmarkedIds.contains(r.id));
+      return r.copyWith(isBookmarked: bookmarkedIds.contains(r.id));
     }).toList();
   }
 
